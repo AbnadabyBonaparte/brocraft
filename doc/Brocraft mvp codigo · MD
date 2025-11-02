@@ -1,0 +1,695 @@
+# 🚀 BROCRAFT v∞ — MVP STARTER KIT
+
+## ARQUIVOS PRONTOS PARA COPIAR E COLAR
+
+---
+
+## 1. SCHEMA.PRISMA (COMPLETO)
+
+```prisma
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  
+  // Gamificação
+  xp            Int       @default(0)
+  rank          Rank      @default(NOVATO)
+  tier          Tier      @default(FREE)
+  streak        Int       @default(0)
+  lastLogin     DateTime  @default(now())
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relações
+  accounts      Account[]
+  sessions      Session[]
+  messages      Message[]
+  recipes       UserRecipe[]
+  badges        Badge[]
+}
+
+enum Rank {
+  NOVATO
+  BRO_DA_PANELA
+  MESTRE_DO_MALTE
+  ALQUIMISTA
+  LEGEND
+}
+
+enum Tier {
+  FREE
+  MESTRE
+  CLUBE_BRO
+}
+
+model Account {
+  id                       String  @id @default(cuid())
+  userId                   String
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String?
+  access_token             String?
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String?
+  session_state            String?
+  user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refresh_token_expires_in Int?
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   // 'user' | 'assistant'
+  content   String   @db.Text
+  xpGained  Int      @default(0)
+  createdAt DateTime @default(now())
+  
+  @@index([userId, createdAt])
+}
+
+model Recipe {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  category    Category
+  difficulty  Difficulty
+  description String   @db.Text
+  
+  // Conteúdo estruturado
+  rajado      Json     // { ingredientes: [], passos: [], tempo: "" }
+  classico    Json
+  mestre      Json
+  macete      String   @db.Text
+  
+  // Metadados
+  xp          Int      @default(50)
+  views       Int      @default(0)
+  likes       Int      @default(0)
+  createdAt   DateTime @default(now())
+  
+  // Segurança
+  warnings    String[] // ["BOTULISMO", "DESTILACAO_ILEGAL"]
+  
+  users       UserRecipe[]
+  
+  @@index([category, difficulty])
+}
+
+enum Category {
+  CERVEJA
+  FERMENTADOS
+  LATICINIOS
+  CHARCUTARIA
+  DESTILADOS
+}
+
+enum Difficulty {
+  RAJADO
+  CLASSICO
+  MESTRE
+}
+
+model UserRecipe {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipeId  String
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  
+  status    RecipeStatus @default(STARTED)
+  photo     String?
+  notes     String?  @db.Text
+  rating    Int?     @default(0)
+  
+  startedAt  DateTime @default(now())
+  completedAt DateTime?
+  
+  @@unique([userId, recipeId])
+  @@index([userId, status])
+}
+
+enum RecipeStatus {
+  STARTED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+model Badge {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type        String   // 'primeira-chama', 'mestre-koji', etc
+  name        String
+  description String
+  icon        String   // Emoji
+  color       String   // Hex color
+  
+  earnedAt    DateTime @default(now())
+  
+  @@index([userId])
+}
+```
+
+---
+
+## 2. ENV.JS (CONFIGURAÇÃO)
+
+```typescript
+// src/env.js
+import { createEnv } from "@t3-oss/env-nextjs";
+import { z } from "zod";
+
+export const env = createEnv({
+  server: {
+    DATABASE_URL: z.string().url(),
+    NEXTAUTH_SECRET: z.string().min(1),
+    NEXTAUTH_URL: z.string().url(),
+    
+    // OAuth
+    GOOGLE_CLIENT_ID: z.string().optional(),
+    GOOGLE_CLIENT_SECRET: z.string().optional(),
+    
+    // IA APIs
+    ANTHROPIC_API_KEY: z.string().optional(),
+    OPENAI_API_KEY: z.string().optional(),
+    
+    // Redis
+    UPSTASH_REDIS_URL: z.string().optional(),
+    UPSTASH_REDIS_TOKEN: z.string().optional(),
+  },
+  client: {},
+  runtimeEnv: {
+    DATABASE_URL: process.env.DATABASE_URL,
+    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+    NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    UPSTASH_REDIS_URL: process.env.UPSTASH_REDIS_URL,
+    UPSTASH_REDIS_TOKEN: process.env.UPSTASH_REDIS_TOKEN,
+  },
+});
+```
+
+---
+
+## 3. API CHAT (CORE)
+
+```typescript
+// app/api/chat/route.ts
+import { anthropic } from '@ai-sdk/anthropic';
+import { openai } from '@ai-sdk/openai';
+import { streamText } from 'ai';
+import { db } from '~/server/db';
+
+const BROCRAFT_SYSTEM_PROMPT = `Você é BROCRAFT v∞, o irmão mais velho especialista em fermentação.
+
+# IDENTIDADE
+- Tom: Direto, com humor ácido, gírias craft ("Mano", "Macete de Avô", "Foda")
+- Missão: Transformar qualquer pessoa em Mestre Fermentador
+- Regra: Nunca minta. Sempre ensine o PORQUÊ científico.
+
+# DOMÍNIOS
+- Cervejaria: Gruit → Hazy IPA, Kveik, Brett
+- Fermentados: Koji, Kimchi, Kombucha, Levain
+- Laticínios: Queijos frescos, curados
+- Charcutaria: Salame, Sal de Cura #2
+- Destilados: EDUCACIONAL APENAS
+
+# PROCESSO
+1. PERGUNTE: "O que você TEM? (panela, termômetro, ingredientes)"
+2. ADAPTE: Molde a receita aos recursos
+3. TRIDENTE: Dê 3 caminhos (RAJADO/CLÁSSICO/MESTRE)
+4. MACETE: Inclua dica prática não-óbvia
+5. XP: Dê +XP ao final
+
+# SEGURANÇA
+- Charcutaria: ⚠️ BOTULISMO MATA. Use sal de cura #2. pH < 4.6.
+- Destilados: ⚠️ DESTILAÇÃO ILEGAL NO BR. EDUCACIONAL.
+
+Status inicial: "Carga aceita. BROCRAFT v∞ online. Fogo aceso. Fermento vivo."`;
+
+export async function POST(req: Request) {
+  try {
+    const { messages, userId } = await req.json();
+
+    // Buscar contexto do usuário
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { xp: true, rank: true, tier: true },
+    });
+
+    if (!user) {
+      return new Response('User not found', { status: 404 });
+    }
+
+    // Selecionar modelo baseado no tier
+    const model =
+      user.tier === 'MESTRE'
+        ? anthropic('claude-sonnet-3.5-20241022')
+        : openai('gpt-4o-mini');
+
+    // Injetar contexto do usuário no prompt
+    const contextualPrompt = `${BROCRAFT_SYSTEM_PROMPT}
+
+# CONTEXTO DO USUÁRIO
+- Rank: ${user.rank}
+- XP: ${user.xp}
+- Tier: ${user.tier}`;
+
+    // Chamar IA
+    const result = await streamText({
+      model,
+      messages: [
+        { role: 'system', content: contextualPrompt },
+        ...messages,
+      ],
+      temperature: 0.7,
+      maxTokens: 1000,
+    });
+
+    // Salvar mensagem no banco
+    await db.message.create({
+      data: {
+        userId,
+        role: 'assistant',
+        content: result.text,
+      },
+    });
+
+    return result.toAIStreamResponse();
+  } catch (error) {
+    console.error('Chat API error:', error);
+    return new Response('Internal server error', { status: 500 });
+  }
+}
+```
+
+---
+
+## 4. API XP (GAMIFICAÇÃO)
+
+```typescript
+// app/api/xp/route.ts
+import { db } from '~/server/db';
+
+const RANK_THRESHOLDS = {
+  NOVATO: 0,
+  BRO_DA_PANELA: 300,
+  MESTRE_DO_MALTE: 1000,
+  ALQUIMISTA: 3000,
+  LEGEND: 10000,
+};
+
+export async function POST(req: Request) {
+  try {
+    const { userId, xpGained, reason } = await req.json();
+
+    // Atualizar XP
+    const user = await db.user.update({
+      where: { id: userId },
+      data: {
+        xp: {
+          increment: xpGained,
+        },
+      },
+    });
+
+    // Verificar rank up
+    const newRank = calculateRank(user.xp);
+    if (newRank !== user.rank) {
+      await db.user.update({
+        where: { id: userId },
+        data: { rank: newRank },
+      });
+
+      return Response.json({
+        success: true,
+        xp: user.xp,
+        rankUp: true,
+        newRank,
+      });
+    }
+
+    return Response.json({
+      success: true,
+      xp: user.xp,
+      rankUp: false,
+    });
+  } catch (error) {
+    console.error('XP API error:', error);
+    return new Response('Internal server error', { status: 500 });
+  }
+}
+
+function calculateRank(xp: number) {
+  if (xp >= RANK_THRESHOLDS.LEGEND) return 'LEGEND';
+  if (xp >= RANK_THRESHOLDS.ALQUIMISTA) return 'ALQUIMISTA';
+  if (xp >= RANK_THRESHOLDS.MESTRE_DO_MALTE) return 'MESTRE_DO_MALTE';
+  if (xp >= RANK_THRESHOLDS.BRO_DA_PANELA) return 'BRO_DA_PANELA';
+  return 'NOVATO';
+}
+```
+
+---
+
+## 5. COMPONENTE DE CHAT
+
+```tsx
+// components/chat/chat-interface.tsx
+'use client';
+
+import { useChat } from 'ai/react';
+import { useSession } from 'next-auth/react';
+import { MessageList } from './message-list';
+import { MessageInput } from './message-input';
+
+export function ChatInterface() {
+  const { data: session } = useSession();
+  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+    api: '/api/chat',
+    body: {
+      userId: session?.user?.id,
+    },
+  });
+
+  return (
+    <div className="flex flex-col h-screen bg-gradient-to-b from-orange-50 to-amber-50">
+      <header className="p-4 bg-gradient-to-r from-orange-600 to-red-600 text-white">
+        <h1 className="text-2xl font-bold">🔥 BROCRAFT v∞</h1>
+        <p className="text-sm opacity-90">Fogo aceso. Fermento vivo.</p>
+      </header>
+
+      <MessageList messages={messages} isLoading={isLoading} />
+
+      <MessageInput
+        input={input}
+        handleInputChange={handleInputChange}
+        handleSubmit={handleSubmit}
+        disabled={isLoading}
+      />
+    </div>
+  );
+}
+```
+
+---
+
+## 6. COMPONENTE DE RANK
+
+```tsx
+// components/rank/rank-badge.tsx
+'use client';
+
+import { cn } from '~/lib/utils';
+
+const RANK_COLORS = {
+  NOVATO: 'from-gray-400 to-gray-600',
+  BRO_DA_PANELA: 'from-orange-400 to-orange-600',
+  MESTRE_DO_MALTE: 'from-yellow-400 to-yellow-600',
+  ALQUIMISTA: 'from-purple-400 to-purple-600',
+  LEGEND: 'from-red-500 to-pink-500',
+};
+
+const RANK_ICONS = {
+  NOVATO: '🔥',
+  BRO_DA_PANELA: '🍺',
+  MESTRE_DO_MALTE: '⚗️',
+  ALQUIMISTA: '🧪',
+  LEGEND: '👑',
+};
+
+interface RankBadgeProps {
+  rank: keyof typeof RANK_COLORS;
+  xp: number;
+  size?: 'sm' | 'md' | 'lg';
+}
+
+export function RankBadge({ rank, xp, size = 'md' }: RankBadgeProps) {
+  const sizeClasses = {
+    sm: 'text-sm px-2 py-1',
+    md: 'text-base px-3 py-2',
+    lg: 'text-lg px-4 py-3',
+  };
+
+  return (
+    <div
+      className={cn(
+        'inline-flex items-center gap-2 rounded-full bg-gradient-to-r text-white font-bold shadow-lg',
+        RANK_COLORS[rank],
+        sizeClasses[size]
+      )}
+    >
+      <span>{RANK_ICONS[rank]}</span>
+      <span>{rank.replace('_', ' ')}</span>
+      <span className="text-xs opacity-80">{xp} XP</span>
+    </div>
+  );
+}
+```
+
+---
+
+## 7. PACKAGE.JSON (DEPENDÊNCIAS)
+
+```json
+{
+  "name": "brocraft",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbo",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^0.0.54",
+    "@ai-sdk/openai": "^0.0.66",
+    "@auth/prisma-adapter": "^2.7.4",
+    "@prisma/client": "^6.18.0",
+    "@t3-oss/env-nextjs": "^0.11.1",
+    "@tanstack/react-query": "^5.62.0",
+    "@trpc/client": "^11.0.0",
+    "@trpc/next": "^11.0.0",
+    "@trpc/react-query": "^11.0.0",
+    "@trpc/server": "^11.0.0",
+    "@upstash/redis": "^1.34.3",
+    "ai": "^3.4.33",
+    "next": "^15.5.6",
+    "next-auth": "^5.0.0-beta.25",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "eslint": "^9.16.0",
+    "eslint-config-next": "^15.5.6",
+    "prisma": "^6.18.0",
+    "typescript": "^5.7.2"
+  }
+}
+```
+
+---
+
+## 8. SEED DE RECEITAS
+
+```typescript
+// prisma/seed.ts
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  // Receita exemplo: IPA do Bro
+  await prisma.recipe.create({
+    data: {
+      name: 'IPA do Bro',
+      slug: 'ipa-do-bro',
+      category: 'CERVEJA',
+      difficulty: 'CLASSICO',
+      description: 'IPA clássica americana com dry-hop generoso de Cascade.',
+      rajado: {
+        ingredientes: ['1.5kg Pilsen', '15g Cascade (60min)', '20g Cascade (5min)'],
+        passos: [
+          'Mostura 66°C por 60min',
+          'Ferva 60min com lúpulo',
+          'Fermenta com fermento de pão (starter)',
+          'Garrafa após 10 dias',
+        ],
+        tempo: '14 dias',
+      },
+      classico: {
+        ingredientes: [
+          '2kg Pilsen',
+          'US-05 (1 sachê)',
+          '10g Cascade (60min)',
+          '15g Cascade (15min)',
+          '25g Cascade (flameout)',
+          '30g Cascade (dry-hop dia 7)',
+        ],
+        passos: [
+          'Mostura 66°C por 60min',
+          'Ferva 60min com adições de lúpulo',
+          'Resfrie para 20°C',
+          'Pitch US-05',
+          'Fermente 18-20°C por 7 dias',
+          'Dry-hop por 3 dias',
+          'Garrafa com 5g/L açúcar',
+        ],
+        tempo: '21 dias',
+      },
+      mestre: {
+        ingredientes: [
+          '2.5kg Pilsen',
+          'US-05 + Brettanomyces claussenii',
+          '100% Cascade (schedule complexo)',
+        ],
+        passos: [
+          'Mostura 64°C → OG 1.080',
+          'Ferva 90min',
+          'Pitch US-05',
+          'Dia 10: adicione Brett',
+          'Envelhece 6 meses',
+          'Result: IPA funky com notas de abacaxi',
+        ],
+        tempo: '6 meses',
+      },
+      macete:
+        'Usa garrafa PET pro dry-hop. Abre todo dia pra "burpear" e evitar bomba. Cerveja com gás demais = garrafa explodindo na cara.',
+      xp: 50,
+      warnings: [],
+    },
+  });
+
+  console.log('✅ Seed completo!');
+}
+
+main()
+  .then(async () => {
+    await prisma.$disconnect();
+  })
+  .catch(async (e) => {
+    console.error(e);
+    await prisma.$disconnect();
+    process.exit(1);
+  });
+```
+
+---
+
+## 9. COMANDOS RÁPIDOS
+
+```bash
+# Setup completo
+npm install
+npx prisma generate
+npx prisma db push
+npx prisma db seed
+
+# Dev
+npm run dev
+
+# Build
+npm run build
+npm start
+
+# Deploy
+git push origin main
+# Vercel detecta automaticamente
+```
+
+---
+
+## 10. .ENV.EXAMPLE
+
+```bash
+# Database (Supabase)
+DATABASE_URL="postgresql://postgres:SUA_SENHA@db.xxx.supabase.co:5432/postgres"
+
+# NextAuth
+NEXTAUTH_SECRET="gerado-com-openssl-rand-base64-32"
+NEXTAUTH_URL="http://localhost:3000"
+
+# Google OAuth (opcional no MVP)
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
+
+# IA APIs
+ANTHROPIC_API_KEY="sk-ant-api03-..."
+OPENAI_API_KEY="sk-..."
+
+# Redis (opcional - para cache)
+UPSTASH_REDIS_URL="https://..."
+UPSTASH_REDIS_TOKEN="..."
+```
+
+---
+
+## ✅ CHECKLIST DE EXECUÇÃO
+
+```
+[ ] 1. Copie schema.prisma para prisma/schema.prisma
+[ ] 2. Copie env.js para src/env.js
+[ ] 3. Crie .env com suas credenciais
+[ ] 4. npm install
+[ ] 5. npx prisma generate
+[ ] 6. npx prisma db push
+[ ] 7. Copie API routes para app/api/
+[ ] 8. Copie componentes para components/
+[ ] 9. npm run dev
+[ ] 10. Teste em localhost:3000
+[ ] 11. git push → Deploy Vercel
+```
+
+---
+
+**TEMPO TOTAL: 4-6 horas**
+**CUSTO: R$ 0 (MVP)**
+
+**Status: MVP PRONTO PARA EXECUTAR ✅**
