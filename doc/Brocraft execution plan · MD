@@ -1,0 +1,457 @@
+# ⚡ BROCRAFT v∞ — PLANO DE EXECUÇÃO IMEDIATA
+
+## 🎯 OBJETIVO: MVP RODANDO EM 72H
+
+---
+
+## FASE 1: SETUP (0-4H)
+
+### HORA 1: INFRAESTRUTURA
+
+```bash
+# ✅ CHECKLIST
+[ ] 1.1 Criar projeto Supabase
+    https://app.supabase.com/new
+    Nome: brocraft-prod
+    Região: South America (São Paulo)
+    [ ] Salvar DATABASE_URL
+    [ ] Salvar ANON KEY
+    [ ] Salvar SERVICE_ROLE KEY
+
+[ ] 1.2 Criar projeto Redis (Upstash)
+    https://console.upstash.com/redis
+    [ ] Criar database "brocraft-cache"
+    [ ] Copiar UPSTASH_REDIS_URL
+    [ ] Copiar UPSTASH_REDIS_TOKEN
+
+[ ] 1.3 Pegar API keys IA
+    Claude: https://console.anthropic.com/
+    [ ] Criar API key
+    [ ] Copiar ANTHROPIC_API_KEY
+    
+    OpenAI: https://platform.openai.com/
+    [ ] Criar API key
+    [ ] Copiar OPENAI_API_KEY
+
+[ ] 1.4 Configurar Google OAuth (opcional MVP)
+    https://console.cloud.google.com/
+    [ ] Criar projeto
+    [ ] Habilitar Google+ API
+    [ ] Criar credenciais OAuth
+    [ ] Copiar GOOGLE_CLIENT_ID
+    [ ] Copiar GOOGLE_CLIENT_SECRET
+```
+
+**Tempo estimado: 1h**
+
+---
+
+### HORA 2-3: CÓDIGO
+
+```bash
+# No Codespaces já aberto
+
+# 1. Substituir arquivos
+[ ] 2.1 Copiar schema.prisma → prisma/schema.prisma
+[ ] 2.2 Copiar env.js → src/env.js
+[ ] 2.3 Criar .env com todas as keys
+[ ] 2.4 Copiar API routes → app/api/
+[ ] 2.5 Copiar componentes → components/
+
+# 2. Instalar dependências
+npm install @ai-sdk/anthropic @ai-sdk/openai ai @upstash/redis
+
+# 3. Prisma
+npx prisma generate
+npx prisma db push
+
+# 4. Testar localmente
+npm run dev
+```
+
+**Tempo estimado: 2h**
+
+---
+
+### HORA 4: VALIDAÇÃO
+
+```bash
+# Testes manuais
+[ ] 4.1 Abrir localhost:3000
+[ ] 4.2 Fazer login (Google ou Email)
+[ ] 4.3 Enviar mensagem no chat
+[ ] 4.4 Verificar resposta do BROCRAFT
+[ ] 4.5 Verificar XP sendo creditado
+[ ] 4.6 Testar Tridente (pedir receita)
+[ ] 4.7 Verificar avisos de segurança
+
+# Se tudo OK → Commit
+git add .
+git commit -m "🔥 BROCRAFT v∞ MVP pronto"
+git push origin main
+```
+
+**Tempo estimado: 1h**
+
+---
+
+## FASE 2: DEPLOY (4-8H)
+
+### HORA 5-6: VERCEL
+
+```bash
+# Deploy automático
+[ ] 5.1 Conectar GitHub → Vercel
+    https://vercel.com/import
+    [ ] Selecionar repo brocraft
+    [ ] Framework: Next.js (detectado auto)
+    [ ] Click "Deploy"
+
+[ ] 5.2 Configurar variáveis de ambiente
+    No dashboard Vercel:
+    [ ] Settings → Environment Variables
+    [ ] Colar todas as keys do .env
+    [ ] Save
+
+[ ] 5.3 Redeploy
+    [ ] Deployments → Latest → Redeploy
+
+[ ] 5.4 Verificar URL
+    https://brocraft.vercel.app
+```
+
+**Tempo estimado: 2h**
+
+---
+
+### HORA 7-8: CONTEÚDO
+
+```bash
+# Adicionar receitas iniciais
+[ ] 7.1 Criar seed.ts
+[ ] 7.2 Adicionar 10 receitas base:
+    - 3 cerveja (Pilsen, IPA, Stout)
+    - 3 fermentados (Kimchi, Kombucha, Levain)
+    - 2 queijos (Ricota, Minas)
+    - 2 charcutaria (Salame, Pastrami)
+
+[ ] 7.3 Rodar seed
+    npx prisma db seed
+
+[ ] 7.4 Testar receitas no app
+```
+
+**Tempo estimado: 2h**
+
+---
+
+## FASE 3: BETA (8-48H)
+
+### DIA 2: AJUSTES
+
+```bash
+# Melhorias baseadas em testes
+[ ] 8.1 UI/UX polish
+    [ ] Cores finais
+    [ ] Responsividade mobile
+    [ ] Loading states
+    [ ] Error handling
+
+[ ] 8.2 Gamificação
+    [ ] Badges SVG
+    [ ] Animações de rank up
+    [ ] Notificações de XP
+
+[ ] 8.3 Segurança
+    [ ] Rate limiting
+    [ ] Input sanitization
+    [ ] Pop-ups de aviso
+```
+
+**Tempo estimado: 8h**
+
+---
+
+### DIA 3: BETA FECHADO
+
+```bash
+# Lançar para primeiros usuários
+[ ] 9.1 Criar landing page simples
+[ ] 9.2 Formulário de inscrição beta
+[ ] 9.3 Convidar 10 amigos
+[ ] 9.4 Monitorar uso real
+[ ] 9.5 Coletar feedback
+[ ] 9.6 Ajustar prompt IA
+```
+
+**Tempo estimado: 8h**
+
+---
+
+## FASE 4: MONETIZAÇÃO (48-72H)
+
+### SPRINT FINAL
+
+```bash
+# Ativar paywall
+[ ] 10.1 Integrar Stripe
+    [ ] Criar conta Stripe Brasil
+    [ ] Criar produtos (MESTRE, CLUBE)
+    [ ] Configurar webhooks
+
+[ ] 10.2 Implementar gates
+    [ ] Limite 50 receitas FREE
+    [ ] Comandos MESTRE bloqueados
+    [ ] Trial 7 dias MESTRE
+
+[ ] 10.3 Testar fluxo de compra
+    [ ] Modo teste Stripe
+    [ ] Compra fake
+    [ ] Verificar upgrade no DB
+```
+
+**Tempo estimado: 8h**
+
+---
+
+## 📊 TIMELINE VISUAL
+
+```
+DIA 1 (8h)
+├── H1: Infra (Supabase, Redis, APIs) ✅
+├── H2-3: Código (Schema, Routes, Components) ✅
+├── H4: Validação Local ✅
+├── H5-6: Deploy Vercel ✅
+└── H7-8: Seed Receitas ✅
+
+DIA 2 (8h)
+├── UI/UX Polish
+├── Gamificação completa
+├── Segurança reforçada
+└── Testes manuais extensivos
+
+DIA 3 (8h)
+├── Landing page
+├── Beta com 10 users
+├── Feedback loop
+├── Stripe integration
+└── MVP 1.0 COMPLETO ✅
+```
+
+---
+
+## 🎯 CRITÉRIOS DE SUCESSO
+
+### MVP 1.0 CONSIDERADO PRONTO QUANDO:
+
+```yaml
+Funcional:
+  [ ] Chat com IA funcionando (Claude/OpenAI)
+  [ ] Login com Google
+  [ ] Sistema de XP e Ranks operacional
+  [ ] 10+ receitas com Tridente
+  [ ] Avisos de segurança exibindo
+  [ ] Deploy em brocraft.vercel.app
+
+Técnico:
+  [ ] 0 erros no console
+  [ ] Tempo de resposta < 3s
+  [ ] Mobile responsivo
+  [ ] Lighthouse score > 80
+
+Negócio:
+  [ ] 10 usuários testando
+  [ ] 0 crashes críticos
+  [ ] Feedback positivo (>70%)
+```
+
+---
+
+## 💰 BUDGET DE TEMPO E CUSTO
+
+### INVESTIMENTO INICIAL
+
+```yaml
+Tempo:
+  Desenvolvimento: 24h (3 dias × 8h)
+  Testes: 6h
+  Ajustes: 6h
+  TOTAL: 36h (1 semana part-time)
+
+Custo:
+  Supabase: R$ 0 (free tier)
+  Vercel: R$ 0 (hobby plan)
+  Redis: R$ 0 (free 10k/day)
+  APIs IA: R$ 50 (primeiros 1000 msgs)
+  Domínio: R$ 50/ano (opcional no MVP)
+  TOTAL: R$ 50-100
+```
+
+### RETORNO ESPERADO (MÊS 1)
+
+```yaml
+Usuários: 100
+Conversão FREE→MESTRE: 5% (5 users)
+MRR: 5 × R$ 9,90 = R$ 49,50
+
+ROI: -50% (ok para MVP)
+Objetivo: Validação, não lucro
+```
+
+---
+
+## 🚀 PRÓXIMOS PASSOS APÓS MVP
+
+### SEMANA 2-4: CRESCIMENTO
+
+```yaml
+Marketing:
+  - Postar no Reddit (r/Homebrewing)
+  - Postar no Twitter (#homebrewing)
+  - Criar #BROCRAFTCHALLENGE
+  - Live no YouTube
+
+Produto:
+  - 50 receitas totais
+  - Modo MESTRE completo
+  - Fórum beta
+  - App mobile (PWA)
+
+Meta: 1.000 usuários em 30 dias
+```
+
+---
+
+## 📋 TEMPLATE DE DAILY STANDUP
+
+```markdown
+## BROCRAFT v∞ - Daily Update
+
+**Data:** DD/MM/AAAA
+**Horas trabalhadas:** Xh
+
+### ✅ Feito hoje
+- [ ] Item 1
+- [ ] Item 2
+
+### 🚧 Em progresso
+- Item X (50% completo)
+
+### ⚠️ Bloqueios
+- Nenhum / Aguardando API key / etc
+
+### 📅 Amanhã
+- [ ] Task A
+- [ ] Task B
+
+**Status geral:** 🟢 No prazo / 🟡 Atrasado / 🔴 Crítico
+```
+
+---
+
+## 🆘 TROUBLESHOOTING RÁPIDO
+
+### PROBLEMAS COMUNS
+
+```yaml
+"npm ERR! ENOENT: no such file or directory":
+  Solução: npm install
+
+"Error: P1001: Can't reach database":
+  Solução: Verificar DATABASE_URL no .env
+
+"OpenAI API error: invalid API key":
+  Solução: Regenerar key em platform.openai.com
+
+"Vercel deployment failed":
+  Solução: Checar env vars no dashboard
+
+"Chat não responde":
+  Solução: 
+    1. Verificar API keys
+    2. Checar logs: vercel logs
+    3. Testar endpoint: /api/chat
+```
+
+---
+
+## 🎬 COMANDOS RÁPIDOS (COPIA E COLA)
+
+```bash
+# Setup completo do zero
+git clone https://github.com/seu-user/brocraft
+cd brocraft
+npm install
+cp .env.example .env
+# [EDITAR .env COM SUAS KEYS]
+npx prisma generate
+npx prisma db push
+npx prisma db seed
+npm run dev
+
+# Deploy
+git add .
+git commit -m "update"
+git push
+
+# Logs em produção
+vercel logs
+
+# Abrir Prisma Studio
+npx prisma studio
+
+# Reset completo (se algo der errado)
+rm -rf node_modules .next
+npm install
+npx prisma generate
+npm run dev
+```
+
+---
+
+## ✅ CHECKLIST FINAL PRÉ-LANÇAMENTO
+
+```bash
+# ANTES DE ANUNCIAR PUBLICAMENTE
+
+[ ] Testes de carga (k6 ou Artillery)
+[ ] Backup do banco (Supabase → Export)
+[ ] Monitoramento (Sentry ou LogRocket)
+[ ] Analytics (Vercel Analytics)
+[ ] Legal:
+    [ ] Termos de Uso
+    [ ] Política de Privacidade
+    [ ] LGPD compliance básico
+[ ] Support:
+    [ ] Email: suporte@brocraft.app
+    [ ] FAQ básico
+[ ] Marketing:
+    [ ] Logo final
+    [ ] Screenshots
+    [ ] Video demo 30s
+```
+
+---
+
+## 🏁 META FINAL
+
+**AO FINAL DAS 72H:**
+
+```
+✅ App ao vivo em brocraft.vercel.app
+✅ 10 receitas funcionais
+✅ IA respondendo perfeitamente
+✅ Gamificação 100% operacional
+✅ 10 beta users testando
+✅ 0 bugs críticos
+✅ Feedback: "Esse app é FODA!"
+
+PRÓXIMO: Scale para 1000 users 🚀
+```
+
+---
+
+**Status: PLANO DE EXECUÇÃO COMPLETO ✅**
+**Salve como: BROCRAFT_EXECUTION_PLAN.md**
+
+**AGORA É SÓ EXECUTAR! 🔥**
