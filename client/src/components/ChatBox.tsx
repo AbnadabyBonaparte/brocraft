@@ -3,7 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Loader2, Send } from "lucide-react";
+import { Loader2, Send, AlertTriangle, Sparkles } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { toast } from "sonner";
 
@@ -25,6 +25,8 @@ export function ChatBox() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [totalXpGained, setTotalXpGained] = useState(0);
+  const [messagesRemaining, setMessagesRemaining] = useState<number | null>(null);
+  const [limitReached, setLimitReached] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const sendMutation = trpc.chat.send.useMutation();
@@ -85,7 +87,7 @@ export function ChatBox() {
   };
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || limitReached) return;
 
     const userMessage = input;
     setInput("");
@@ -98,6 +100,14 @@ export function ChatBox() {
         ...prev,
         { role: "assistant", content: response.response, timestamp: new Date() },
       ]);
+
+      // Atualizar mensagens restantes
+      if (response.messagesRemaining !== undefined && response.messagesRemaining !== null) {
+        setMessagesRemaining(response.messagesRemaining);
+        if (response.messagesRemaining <= 0) {
+          setLimitReached(true);
+        }
+      }
 
       // Show XP notification with toast
       if (response.xpGained > 0) {
@@ -138,16 +148,45 @@ export function ChatBox() {
           }, (index + 1) * 1000); // Stagger badge notifications
         });
       }
-    } catch (error) {
-      console.error("Failed to send message:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "❌ Erro ao processar sua mensagem. Tente novamente.",
-          timestamp: new Date(),
-        },
-      ]);
+    } catch (error: any) {
+      console.error("[BROCRAFT][Chat] Error:", error);
+      
+      // Verificar se é erro de limite de mensagens (FORBIDDEN)
+      const errorCode = error?.data?.code || error?.shape?.data?.code;
+      const errorMessage = error?.message || error?.shape?.message;
+      
+      if (errorCode === "FORBIDDEN" && errorMessage?.includes("limite")) {
+        setLimitReached(true);
+        setMessagesRemaining(0);
+        toast.error("Limite de mensagens atingido! 📊", {
+          description: "Faça upgrade para continuar conversando.",
+          action: {
+            label: "Ver Planos",
+            onClick: () => window.location.href = "/#pricing",
+          },
+          duration: 10000,
+        });
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: "⚠️ **Limite diário atingido!**\n\nVocê usou todas as mensagens do seu plano hoje. Para continuar aprendendo sobre fermentação, considere fazer upgrade para o plano MESTRE ou CLUBE BRO.\n\n🔥 O BROCRAFT estará aqui amanhã!",
+            timestamp: new Date(),
+          },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: "❌ Erro ao processar sua mensagem. Tente novamente.",
+            timestamp: new Date(),
+          },
+        ]);
+        toast.error("Erro ao enviar mensagem", {
+          description: "Tente novamente em alguns instantes.",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -192,25 +231,44 @@ export function ChatBox() {
 
       {/* Input */}
       <div className="p-4 bg-white border-t border-orange-200 space-y-2">
+        {/* Limite de mensagens warning */}
+        {limitReached && (
+          <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
+            <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+            <span>Limite diário atingido. Faça upgrade para continuar!</span>
+            <a href="/#pricing" className="ml-auto text-orange-600 font-semibold hover:underline">
+              Ver Planos
+            </a>
+          </div>
+        )}
+        
         <div className="flex gap-2">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && handleSend()}
-            placeholder="Pergunte algo sobre fermentação..."
-            disabled={isLoading}
+            onKeyPress={(e) => e.key === "Enter" && !limitReached && handleSend()}
+            placeholder={limitReached ? "Limite atingido - faça upgrade para continuar" : "Pergunte algo sobre fermentação..."}
+            disabled={isLoading || limitReached}
             className="flex-1"
           />
           <Button
             onClick={handleSend}
-            disabled={isLoading || !input.trim()}
-            className="bg-orange-600 hover:bg-orange-700"
+            disabled={isLoading || !input.trim() || limitReached}
+            className="bg-orange-600 hover:bg-orange-700 disabled:opacity-50"
           >
             <Send className="h-4 w-4" />
           </Button>
         </div>
         <div className="flex gap-2 text-xs text-gray-500">
-          <span>XP Ganho: +{totalXpGained}</span>
+          <span className="flex items-center gap-1">
+            <Sparkles className="h-3 w-3 text-orange-500" />
+            XP: +{totalXpGained}
+          </span>
+          {messagesRemaining !== null && (
+            <span className={`${messagesRemaining <= 3 ? 'text-amber-600 font-semibold' : ''}`}>
+              • {messagesRemaining} msgs restantes hoje
+            </span>
+          )}
           <Button
             variant="ghost"
             size="sm"

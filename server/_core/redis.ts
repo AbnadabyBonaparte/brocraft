@@ -37,9 +37,9 @@ class UpstashRedisClient {
     this.enabled = Boolean(this.baseUrl && this.token);
 
     if (this.enabled) {
-      console.log("[Redis] ✅ Cache habilitado (Upstash)");
+      console.log("[BROCRAFT][Redis] ✅ Cache habilitado (Upstash)");
     } else {
-      console.log("[Redis] ⚠️ Cache desabilitado (variáveis não configuradas)");
+      console.log("[BROCRAFT][Redis] ⚠️ Cache desabilitado (variáveis não configuradas)");
     }
   }
 
@@ -61,14 +61,15 @@ class UpstashRedisClient {
       });
 
       if (!response.ok) {
-        console.error("[Redis] Request failed:", response.status);
+        console.error("[BROCRAFT][Redis] ❌ Request failed:", response.status);
         return null;
       }
 
       const data = await response.json();
       return data.result;
     } catch (error) {
-      console.error("[Redis] Error:", error);
+      // Graceful degradation - log mas não quebra o app
+      console.error("[BROCRAFT][Redis] ❌ Error (cache disabled):", error instanceof Error ? error.message : error);
       return null;
     }
   }
@@ -133,11 +134,17 @@ export async function getCachedLLMResponse(messages: any[]): Promise<any | null>
   const cached = await client.get<any>(key);
   
   if (cached) {
-    console.log("[Redis] ✅ Cache HIT");
+    // Não logar HIT em produção para evitar spam
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[BROCRAFT][Redis] ✅ Cache HIT");
+    }
     return cached;
   }
   
-  console.log("[Redis] ❌ Cache MISS");
+  // Não logar MISS em produção para evitar spam
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[BROCRAFT][Redis] Cache MISS");
+  }
   return null;
 }
 
@@ -147,7 +154,10 @@ export async function cacheLLMResponse(messages: any[], response: any): Promise<
 
   const key = `${CACHE_PREFIX}${hashPrompt(messages)}`;
   await client.set(key, response, CACHE_TTL_SECONDS);
-  console.log("[Redis] 💾 Response cached");
+  // Não logar em produção para evitar spam
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[BROCRAFT][Redis] 💾 Response cached");
+  }
 }
 
 // Stats para monitoramento (opcional)

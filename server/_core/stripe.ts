@@ -97,7 +97,7 @@ export async function createCheckoutSessionForTier(
     throw new Error("Stripe não retornou URL de checkout");
   }
 
-  console.log(`[Stripe] Checkout session criada para user ${userId}, tier ${tier}`);
+  console.log(`[BROCRAFT][Stripe] ✅ Checkout session criada para user ${userId}, tier ${tier}`);
 
   return {
     url: session.url,
@@ -136,6 +136,6 @@ export async function getCheckoutSession(sessionId: string): Promise<Stripe.Chec
 export async function cancelSubscription(subscriptionId: string): Promise<void> {
   const stripe = getStripe();
   await stripe.subscriptions.cancel(subscriptionId);
-  console.log(`[Stripe] Subscription ${subscriptionId} cancelada`);
+  console.log(`[BROCRAFT][Stripe] ⚠️ Subscription ${subscriptionId} cancelada`);
 }
 

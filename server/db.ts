@@ -212,6 +212,15 @@ async function hasActivityOnDate(userId: number, date: Date): Promise<boolean> {
   return completedRecipes.length > 0;
 }
 
+/**
+ * Atualiza e retorna o streak do usuário.
+ * 
+ * TODO: [BETA] Considerar fuso horário do usuário para cálculo de streak
+ * Atualmente usa horário do servidor (UTC ou local).
+ * Pode causar bugs se o usuário estiver em fuso horário diferente.
+ * Prioridade: BAIXA para beta, ALTA para produção global.
+ * Solução: Adicionar campo timezone no user ou usar UTC consistente.
+ */
 export async function updateAndGetStreak(userId: number): Promise<number> {
   const db = await getDb();
   if (!db) return 0;

@@ -340,6 +340,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
 
   if (!response.ok) {
     const errorText = await response.text();
+    console.error(`[BROCRAFT][LLM] ❌ Invoke failed: ${response.status} ${response.statusText}`);
     throw new Error(
       `LLM invoke failed: ${response.status} ${response.statusText} – ${errorText}`
     );
