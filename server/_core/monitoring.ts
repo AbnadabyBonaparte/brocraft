@@ -116,3 +116,4 @@ export function isMonitoringEnabled(): boolean {
   return sentryInitialized;
 }
 
+

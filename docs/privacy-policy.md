@@ -103,3 +103,4 @@ Esta política é regida pelas leis do Brasil, incluindo a Lei Geral de Proteç�
 
 Ao usar o BROCRAFT, você consente com esta Política de Privacidade.
 
+
