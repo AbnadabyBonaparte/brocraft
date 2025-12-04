@@ -1,4 +1,5 @@
 import { ENV } from "./env";
+import { getCachedLLMResponse, cacheLLMResponse, recordCacheHit, recordCacheMiss } from "./redis";
 
 export type Role = "system" | "user" | "assistant" | "tool" | "function";
 
@@ -279,6 +280,22 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     response_format,
   } = params;
 
+  // ============================================
+  // CACHE CHECK: Verifica se a resposta está em cache
+  // ============================================
+  // Só cacheia se não houver tools (chamadas com tools são mais dinâmicas)
+  const canUseCache = !tools || tools.length === 0;
+  
+  if (canUseCache) {
+    const cached = await getCachedLLMResponse(messages);
+    if (cached) {
+      recordCacheHit();
+      return cached as InvokeResult;
+    }
+    recordCacheMiss();
+  }
+  // ============================================
+
   const payload: Record<string, unknown> = {
     model: "gemini-2.5-flash",
     messages: messages.map(normalizeMessage),
@@ -328,5 +345,15 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     );
   }
 
-  return (await response.json()) as InvokeResult;
+  const result = (await response.json()) as InvokeResult;
+
+  // ============================================
+  // CACHE SAVE: Salva a resposta no cache
+  // ============================================
+  if (canUseCache) {
+    await cacheLLMResponse(messages, result);
+  }
+  // ============================================
+
+  return result;
 }

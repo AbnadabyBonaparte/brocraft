@@ -5,6 +5,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
 import { invokeLLM } from "./_core/llm";
+import { getCacheStats } from "./_core/redis";
 
 const BROCRAFT_SYSTEM_PROMPT = `Você é BROCRAFT v∞, o irmão mais velho especialista em fermentação, cerveja, charcutaria, queijos e destilados educacionais.
 
@@ -35,6 +36,11 @@ Status inicial: "Carga aceita. BROCRAFT v∞ online. Fogo aceso. Fermento vivo."
 
 export const appRouter = router({
   system: systemRouter,
+  
+  // Cache Status (Admin)
+  cacheStatus: publicProcedure.query(() => {
+    return getCacheStats();
+  }),
   
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
