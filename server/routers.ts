@@ -11,6 +11,8 @@ import { z } from "zod";
 import * as db from "./db";
 import { invokeLLM } from "./_core/llm";
 import { getCacheStats } from "./_core/redis";
+import { createCheckoutSessionForTier, isStripeConfigured, STRIPE_PLANS, type TierType } from "./_core/stripe";
+import { TRPCError } from "@trpc/server";
 
 const BROCRAFT_SYSTEM_PROMPT = `Você é BROCRAFT v∞, o irmão mais velho especialista em fermentação, cerveja, charcutaria, queijos e destilados educacionais.
 
@@ -70,6 +72,24 @@ export const appRouter = router({
           // Get user profile for context
           const userProfile = await db.getUserProfile(userId);
           
+          // =============================================
+          // PAYWALL: Verificar limite de mensagens diárias
+          // =============================================
+          const tier = userProfile.tier as keyof typeof db.TIER_LIMITS;
+          const tierLimits = db.TIER_LIMITS[tier] || db.TIER_LIMITS.FREE;
+          
+          if (tierLimits.dailyMessages !== Infinity) {
+            const messagesToday = await db.countUserMessagesToday(userId);
+            
+            if (messagesToday >= tierLimits.dailyMessages) {
+              throw new TRPCError({
+                code: "FORBIDDEN",
+                message: `Você atingiu o limite de ${tierLimits.dailyMessages} mensagens diárias do plano ${tier}. Faça upgrade para continuar conversando!`,
+              });
+            }
+          }
+          // =============================================
+          
           // Save user message
           await db.saveMessage(userId, "user", input.message);
 
@@ -104,12 +124,19 @@ export const appRouter = router({
           // Check and award badges
           const badgeResult = await db.checkAndAwardBadges(userId);
 
+          // Retornar info de limite restante
+          const newMessageCount = await db.countUserMessagesToday(userId);
+          const messagesRemaining = tierLimits.dailyMessages === Infinity 
+            ? null 
+            : tierLimits.dailyMessages - newMessageCount;
+
           return {
             response: assistantMessage,
             xpGained,
             rankUp: xpResult.rankUp,
             newRank: xpResult.newRank,
             newBadges: badgeResult.newlyAwarded,
+            messagesRemaining,
           };
         } catch (error) {
           console.error("Chat error:", error);
@@ -368,6 +395,117 @@ export const appRouter = router({
 
         return db.deleteConversation(input.conversationId, userId);
       }),
+  }),
+
+  // Billing Router (Stripe)
+  billing: router({
+    // Retorna informações de billing do usuário
+    getStatus: protectedProcedure.query(async ({ ctx }) => {
+      const userId = ctx.user?.id;
+      if (!userId) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+      const tier = await db.getUserTier(userId);
+      const purchases = await db.getUserPurchases(userId);
+
+      return {
+        tier,
+        isStripeConfigured: isStripeConfigured(),
+        purchases: purchases.map(p => ({
+          id: p.id,
+          tier: p.tier,
+          status: p.status,
+          amount: p.amount,
+          createdAt: p.createdAt,
+        })),
+      };
+    }),
+
+    // Cria uma sessão de checkout do Stripe
+    createCheckoutSession: protectedProcedure
+      .input(z.object({
+        tier: z.enum(["MESTRE", "CLUBE_BRO"]),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const userId = ctx.user?.id;
+        const userEmail = ctx.user?.email;
+        if (!userId) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+        // Verificar se Stripe está configurado
+        if (!isStripeConfigured()) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Sistema de pagamentos não configurado. Contate o suporte.",
+          });
+        }
+
+        // Verificar se usuário já tem esse tier ou superior
+        const currentTier = await db.getUserTier(userId);
+        const tierOrder = { FREE: 0, MESTRE: 1, CLUBE_BRO: 2 };
+        
+        if (tierOrder[currentTier as keyof typeof tierOrder] >= tierOrder[input.tier]) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Você já possui o plano ${currentTier} ou superior.`,
+          });
+        }
+
+        try {
+          // Criar checkout session no Stripe
+          const { url, sessionId } = await createCheckoutSessionForTier(
+            userId,
+            userEmail || null,
+            input.tier
+          );
+
+          // Registrar compra como pendente
+          await db.createPurchase({
+            userId,
+            tier: input.tier,
+            stripeSessionId: sessionId,
+            amount: STRIPE_PLANS[input.tier].price,
+            status: "PENDING",
+          });
+
+          return { url };
+        } catch (error) {
+          console.error("[Billing] Error creating checkout:", error);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Erro ao criar sessão de pagamento. Tente novamente.",
+          });
+        }
+      }),
+
+    // Retorna os planos disponíveis
+    getPlans: publicProcedure.query(() => {
+      return {
+        MESTRE: {
+          name: "Plano MESTRE",
+          price: 990,
+          priceFormatted: "R$ 9,90",
+          period: "mês",
+          features: [
+            "Chat com IA (100 mensagens/dia)",
+            "Receitas avançadas",
+            "Badges exclusivos",
+            "Comunidade",
+          ],
+        },
+        CLUBE_BRO: {
+          name: "Plano CLUBE BRO",
+          price: 1990,
+          priceFormatted: "R$ 19,90",
+          period: "mês",
+          features: [
+            "Chat com IA (ilimitado)",
+            "Todas as receitas premium",
+            "Badges exclusivos",
+            "Comunidade VIP",
+            "Suporte prioritário",
+          ],
+        },
+      };
+    }),
   }),
 });
 

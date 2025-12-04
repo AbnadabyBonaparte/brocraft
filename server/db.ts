@@ -1,8 +1,9 @@
 import { eq, and, desc, gte, lt, sql, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, messages, recipes, userRecipes, badges, communityPosts, votes, products, cartItems, orders, conversationHistory, InsertConversationHistory } from "../drizzle/schema";
+import { InsertUser, users, messages, recipes, userRecipes, badges, communityPosts, votes, products, cartItems, orders, conversationHistory, InsertConversationHistory, purchases } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import type { LeaderboardTimeframe, CommunityCategory, VoteType } from "@shared/const";
+import type { TierType } from "./_core/stripe";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -993,3 +994,151 @@ export async function deleteConversation(conversationId: number, userId: number)
   
   return { success: true };
 }
+
+// =============================================
+// BILLING / STRIPE
+// =============================================
+
+/**
+ * Retorna o tier atual do usuário
+ */
+export async function getUserTier(userId: number): Promise<string> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const user = await db.select({ tier: users.tier })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  
+  return user[0]?.tier || "FREE";
+}
+
+/**
+ * Atualiza o tier do usuário
+ */
+export async function updateUserTier(userId: number, tier: TierType | "FREE"): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(users)
+    .set({ tier: tier as any })
+    .where(eq(users.id, userId));
+  
+  console.log(`[DB] User ${userId} tier updated to ${tier}`);
+}
+
+/**
+ * Cria um registro de compra (purchase)
+ */
+export async function createPurchase(data: {
+  userId: number;
+  tier: TierType;
+  stripeSessionId?: string;
+  stripeSubscriptionId?: string;
+  stripeCustomerId?: string;
+  amount: number;
+  status?: "PENDING" | "COMPLETED" | "CANCELLED" | "REFUNDED";
+}): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(purchases).values({
+    userId: data.userId,
+    tier: data.tier as any,
+    stripeSessionId: data.stripeSessionId,
+    stripeSubscriptionId: data.stripeSubscriptionId,
+    stripeCustomerId: data.stripeCustomerId,
+    amount: data.amount,
+    status: (data.status || "PENDING") as any,
+  });
+  
+  // Retorna o ID inserido
+  return Number(result[0].insertId);
+}
+
+/**
+ * Atualiza o status de uma compra
+ */
+export async function updatePurchaseStatus(
+  stripeSessionId: string,
+  status: "PENDING" | "COMPLETED" | "CANCELLED" | "REFUNDED",
+  stripeSubscriptionId?: string,
+  stripeCustomerId?: string
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const updateData: any = { status };
+  if (stripeSubscriptionId) updateData.stripeSubscriptionId = stripeSubscriptionId;
+  if (stripeCustomerId) updateData.stripeCustomerId = stripeCustomerId;
+  
+  await db.update(purchases)
+    .set(updateData)
+    .where(eq(purchases.stripeSessionId, stripeSessionId));
+}
+
+/**
+ * Busca uma compra pelo Stripe Session ID
+ */
+export async function getPurchaseBySessionId(stripeSessionId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.select()
+    .from(purchases)
+    .where(eq(purchases.stripeSessionId, stripeSessionId))
+    .limit(1);
+  
+  return result[0] || null;
+}
+
+/**
+ * Lista compras de um usuário
+ */
+export async function getUserPurchases(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  return db.select()
+    .from(purchases)
+    .where(eq(purchases.userId, userId))
+    .orderBy(desc(purchases.createdAt));
+}
+
+/**
+ * Conta mensagens do usuário hoje (para paywall de limites)
+ */
+export async function countUserMessagesToday(userId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const result = await db.select({ count: sql<number>`COUNT(*)` })
+    .from(messages)
+    .where(and(
+      eq(messages.userId, userId),
+      eq(messages.role, "user"),
+      gte(messages.createdAt, today)
+    ));
+  
+  return Number(result[0]?.count || 0);
+}
+
+// Limites por tier
+export const TIER_LIMITS = {
+  FREE: {
+    dailyMessages: 10,
+    recipesAccess: "basic", // apenas básicas
+  },
+  MESTRE: {
+    dailyMessages: 100,
+    recipesAccess: "advanced", // básicas + avançadas
+  },
+  CLUBE_BRO: {
+    dailyMessages: Infinity,
+    recipesAccess: "all", // todas
+  },
+} as const;

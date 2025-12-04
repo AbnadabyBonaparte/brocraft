@@ -14,7 +14,9 @@ import {
   Zap,
   TrendingUp,
   History,
+  Crown,
 } from "lucide-react";
+import { UpgradeCTA } from "./PricingSection";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -191,6 +193,11 @@ export function DashboardLayout({
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Upgrade CTA */}
+        <div className="px-3 pb-4">
+          <UpgradeCTA currentTier={userTier} />
         </div>
 
         {/* Spacer */}

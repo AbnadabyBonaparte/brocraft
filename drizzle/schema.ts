@@ -252,6 +252,29 @@ export const conversationHistory = mysqlTable("conversationHistory", {
 export type ConversationHistory = typeof conversationHistory.$inferSelect;
 export type InsertConversationHistory = typeof conversationHistory.$inferInsert;
 
+// Purchases table (tier upgrades via Stripe)
+export const purchases = mysqlTable("purchases", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  
+  tier: mysqlEnum("tier", ["MESTRE", "CLUBE_BRO"]).notNull(),
+  
+  stripeSessionId: varchar("stripeSessionId", { length: 255 }),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
+  
+  amount: int("amount").notNull(), // em centavos
+  currency: varchar("currency", { length: 3 }).default("BRL").notNull(),
+  
+  status: mysqlEnum("status", ["PENDING", "COMPLETED", "CANCELLED", "REFUNDED"]).default("PENDING").notNull(),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Purchase = typeof purchases.$inferSelect;
+export type InsertPurchase = typeof purchases.$inferInsert;
+
 // Relations for community posts
 export const communityPostsRelations = relations(communityPosts, ({ one, many }) => ({
   user: one(users, {
