@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Loader2, Send } from "lucide-react";
 import { Streamdown } from "streamdown";
+import { toast } from "sonner";
 
 interface Message {
   id?: string;
@@ -98,14 +99,44 @@ export function ChatBox() {
         { role: "assistant", content: response.response, timestamp: new Date() },
       ]);
 
-      // Show XP notification
+      // Show XP notification with toast
       if (response.xpGained > 0) {
         setTotalXpGained((prev) => prev + response.xpGained);
-        console.log(`+${response.xpGained} XP`);
+        toast.success(`+${response.xpGained} XP`, {
+          description: "Continue a brassagem! 🍺",
+          duration: 3000,
+        });
       }
 
-      if (response.rankUp) {
-        console.log(`🎉 Rank up! Novo rank: ${response.newRank}`);
+      // Show rank up toast
+      if (response.rankUp && response.newRank) {
+        const rankName = response.newRank.replace(/_/g, " ");
+        toast("🎉 Rank Up!", {
+          description: `Você alcançou o rank ${rankName}!`,
+          duration: 5000,
+          style: {
+            background: "linear-gradient(135deg, #f97316, #ef4444)",
+            color: "white",
+            border: "none",
+          },
+        });
+      }
+
+      // Show badge notifications
+      if (response.newBadges && response.newBadges.length > 0) {
+        response.newBadges.forEach((badge, index) => {
+          setTimeout(() => {
+            toast("🏆 Novo Badge!", {
+              description: `${badge.icon} ${badge.name}`,
+              duration: 5000,
+              style: {
+                background: badge.color || "#8B5CF6",
+                color: "white",
+                border: "none",
+              },
+            });
+          }, (index + 1) * 1000); // Stagger badge notifications
+        });
       }
     } catch (error) {
       console.error("Failed to send message:", error);

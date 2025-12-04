@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, gte, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, messages, recipes, userRecipes, badges, communityPosts, votes, products, cartItems, orders, conversationHistory, InsertConversationHistory } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -152,10 +152,127 @@ export async function getUserProfile(userId: number) {
   
   const userBadges = await db.select().from(badges).where(eq(badges.userId, userId));
   
+  // Atualiza e calcula streak baseado na atividade
+  const updatedStreak = await updateAndGetStreak(userId);
+  
   return {
     ...user[0],
+    streak: updatedStreak,
     badges: userBadges,
   };
+}
+
+// Streak System
+function getStartOfDay(date: Date): Date {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+function getStartOfYesterday(): Date {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  yesterday.setHours(0, 0, 0, 0);
+  return yesterday;
+}
+
+async function hasActivityOnDate(userId: number, date: Date): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  const startOfDay = getStartOfDay(date);
+  const endOfDay = new Date(startOfDay);
+  endOfDay.setDate(endOfDay.getDate() + 1);
+  
+  // Verifica mensagens no chat
+  const chatMessages = await db.select({ id: messages.id })
+    .from(messages)
+    .where(and(
+      eq(messages.userId, userId),
+      gte(messages.createdAt, startOfDay),
+      sql`${messages.createdAt} < ${endOfDay}`
+    ))
+    .limit(1);
+  
+  if (chatMessages.length > 0) return true;
+  
+  // Verifica receitas completadas
+  const completedRecipes = await db.select({ id: userRecipes.id })
+    .from(userRecipes)
+    .where(and(
+      eq(userRecipes.userId, userId),
+      eq(userRecipes.status, "COMPLETED"),
+      gte(userRecipes.completedAt, startOfDay),
+      sql`${userRecipes.completedAt} < ${endOfDay}`
+    ))
+    .limit(1);
+  
+  return completedRecipes.length > 0;
+}
+
+export async function updateAndGetStreak(userId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  
+  const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!user.length) return 0;
+  
+  const currentStreak = user[0].streak;
+  const lastSignedIn = user[0].lastSignedIn;
+  const today = getStartOfDay(new Date());
+  const yesterday = getStartOfYesterday();
+  
+  // Verifica se já teve atividade hoje
+  const hadActivityToday = await hasActivityOnDate(userId, new Date());
+  
+  // Se já teve atividade hoje, verifica se precisa incrementar o streak
+  if (hadActivityToday) {
+    // Verifica se o lastSignedIn foi antes de hoje (novo dia)
+    const lastSignedInDay = getStartOfDay(lastSignedIn);
+    
+    if (lastSignedInDay.getTime() < today.getTime()) {
+      // É um novo dia com atividade
+      // Verifica se teve atividade ontem para continuar o streak
+      const hadActivityYesterday = await hasActivityOnDate(userId, yesterday);
+      
+      let newStreak: number;
+      if (hadActivityYesterday || lastSignedInDay.getTime() === yesterday.getTime()) {
+        // Continua o streak
+        newStreak = currentStreak + 1;
+      } else {
+        // Quebrou o streak, começa de 1
+        newStreak = 1;
+      }
+      
+      // Atualiza o streak e lastSignedIn
+      await db.update(users)
+        .set({ streak: newStreak, lastSignedIn: new Date() })
+        .where(eq(users.id, userId));
+      
+      return newStreak;
+    }
+    
+    // Já atualizou hoje, retorna o streak atual
+    return currentStreak > 0 ? currentStreak : 1;
+  }
+  
+  // Sem atividade hoje ainda
+  // Verifica se perdeu o streak (mais de 1 dia sem atividade)
+  const lastActivityDay = getStartOfDay(lastSignedIn);
+  const daysSinceLastActivity = Math.floor((today.getTime() - lastActivityDay.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (daysSinceLastActivity > 1) {
+    // Perdeu o streak
+    if (currentStreak > 0) {
+      await db.update(users)
+        .set({ streak: 0 })
+        .where(eq(users.id, userId));
+    }
+    return 0;
+  }
+  
+  // Ainda está no mesmo dia ou dia seguinte (ainda pode manter)
+  return currentStreak;
 }
 
 // Recipes
@@ -289,6 +406,180 @@ export async function getUserBadges(userId: number) {
   if (!db) throw new Error("Database not available");
   
   return db.select().from(badges).where(eq(badges.userId, userId));
+}
+
+// Badge Definitions (catálogo de badges disponíveis)
+const BADGE_DEFINITIONS = {
+  FIRST_CHAT: {
+    type: "FIRST_CHAT",
+    name: "Primeira Chama 🔥",
+    description: "Enviou sua primeira mensagem no chat",
+    icon: "🔥",
+    color: "#FF6B00",
+    criteria: (stats: UserStats) => stats.totalMessages >= 1,
+  },
+  TEN_CHATS: {
+    type: "TEN_CHATS",
+    name: "Bro Falante 💬",
+    description: "Enviou 10 mensagens no chat",
+    icon: "💬",
+    color: "#3B82F6",
+    criteria: (stats: UserStats) => stats.totalMessages >= 10,
+  },
+  FIFTY_CHATS: {
+    type: "FIFTY_CHATS",
+    name: "Mestre do Papo 🗣️",
+    description: "Enviou 50 mensagens no chat",
+    icon: "🗣️",
+    color: "#8B5CF6",
+    criteria: (stats: UserStats) => stats.totalMessages >= 50,
+  },
+  FIRST_RECIPE: {
+    type: "FIRST_RECIPE",
+    name: "Primeira Receita 📜",
+    description: "Completou sua primeira receita",
+    icon: "📜",
+    color: "#10B981",
+    criteria: (stats: UserStats) => stats.completedRecipes >= 1,
+  },
+  TEN_RECIPES: {
+    type: "TEN_RECIPES",
+    name: "Chef em Formação 👨‍🍳",
+    description: "Completou 10 receitas",
+    icon: "👨‍🍳",
+    color: "#F59E0B",
+    criteria: (stats: UserStats) => stats.completedRecipes >= 10,
+  },
+  FIRST_RANK_UP: {
+    type: "FIRST_RANK_UP",
+    name: "Subindo de Nível ⬆️",
+    description: "Alcançou o rank Bro da Panela",
+    icon: "⬆️",
+    color: "#EF4444",
+    criteria: (stats: UserStats) => stats.rank !== "NOVATO",
+  },
+  MESTRE_RANK: {
+    type: "MESTRE_RANK",
+    name: "Mestre do Malte 🍺",
+    description: "Alcançou o rank Mestre do Malte",
+    icon: "🍺",
+    color: "#F59E0B",
+    criteria: (stats: UserStats) => ["MESTRE_DO_MALTE", "ALQUIMISTA", "LEGEND"].includes(stats.rank),
+  },
+  STREAK_7: {
+    type: "STREAK_7",
+    name: "Uma Semana Fermentando 📅",
+    description: "Manteve uma streak de 7 dias",
+    icon: "📅",
+    color: "#06B6D4",
+    criteria: (stats: UserStats) => stats.streak >= 7,
+  },
+} as const;
+
+type UserStats = {
+  totalMessages: number;
+  completedRecipes: number;
+  xp: number;
+  rank: string;
+  streak: number;
+};
+
+export type AwardedBadge = {
+  type: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+};
+
+export async function checkAndAwardBadges(userId: number): Promise<{ newlyAwarded: AwardedBadge[] }> {
+  const db = await getDb();
+  if (!db) {
+    return { newlyAwarded: [] };
+  }
+  
+  try {
+    // 1. Buscar dados do usuário
+    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user.length) {
+      return { newlyAwarded: [] };
+    }
+    
+    // 2. Contar mensagens
+    const messageCountResult = await db.select({ count: sql<number>`COUNT(*)` })
+      .from(messages)
+      .where(eq(messages.userId, userId));
+    const totalMessages = Number(messageCountResult[0]?.count || 0);
+    
+    // 3. Contar receitas completadas
+    const recipeCountResult = await db.select({ count: sql<number>`COUNT(*)` })
+      .from(userRecipes)
+      .where(and(
+        eq(userRecipes.userId, userId),
+        eq(userRecipes.status, "COMPLETED")
+      ));
+    const completedRecipes = Number(recipeCountResult[0]?.count || 0);
+    
+    // 4. Montar stats do usuário
+    const stats: UserStats = {
+      totalMessages,
+      completedRecipes,
+      xp: user[0].xp,
+      rank: user[0].rank,
+      streak: user[0].streak,
+    };
+    
+    // 5. Buscar badges que o usuário já tem
+    const existingBadges = await db.select({ type: badges.type })
+      .from(badges)
+      .where(eq(badges.userId, userId));
+    const existingTypes = new Set(existingBadges.map(b => b.type));
+    
+    // 6. Verificar quais badges novos o usuário merece
+    const newlyAwarded: AwardedBadge[] = [];
+    
+    for (const [key, badge] of Object.entries(BADGE_DEFINITIONS)) {
+      // Pula se já tem
+      if (existingTypes.has(badge.type)) continue;
+      
+      // Verifica critério
+      if (badge.criteria(stats)) {
+        // Concede o badge
+        await db.insert(badges).values({
+          userId,
+          type: badge.type,
+          name: badge.name,
+          description: badge.description || "",
+          icon: badge.icon,
+          color: badge.color,
+        });
+        
+        newlyAwarded.push({
+          type: badge.type,
+          name: badge.name,
+          description: badge.description || "",
+          icon: badge.icon,
+          color: badge.color,
+        });
+      }
+    }
+    
+    return { newlyAwarded };
+  } catch (error) {
+    console.error("[checkAndAwardBadges] Error:", error);
+    return { newlyAwarded: [] };
+  }
+}
+
+// Função para listar todos os badges disponíveis (para mostrar bloqueados)
+export function getAllBadgeDefinitions() {
+  return Object.values(BADGE_DEFINITIONS).map(badge => ({
+    type: badge.type,
+    name: badge.name,
+    description: badge.description,
+    icon: badge.icon,
+    color: badge.color,
+  }));
 }
 
 // Community Posts
@@ -441,11 +732,19 @@ export async function removeFromCart(userId: number, cartItemId: number) {
     .where(eq(cartItems.id, cartItemId))
     .limit(1);
   
-  if (!item.length || item[0].userId !== userId) {
+  // Se o item não existe, retorna sucesso (idempotente)
+  if (!item.length) {
+    return { success: true, message: "Item already removed" };
+  }
+  
+  // Verifica se pertence ao usuário
+  if (item[0].userId !== userId) {
     return { success: false, message: "Not authorized" };
   }
   
-  // Note: In production, use db.delete(cartItems).where(eq(cartItems.id, cartItemId))
+  // Delete real do item do carrinho
+  await db.delete(cartItems).where(eq(cartItems.id, cartItemId));
+  
   return { success: true };
 }
 
@@ -552,11 +851,18 @@ export async function deleteConversation(conversationId: number, userId: number)
     .where(eq(conversationHistory.id, conversationId))
     .limit(1);
   
-  if (!conv.length || conv[0].userId !== userId) {
+  // Se a conversa não existe, retorna sucesso (idempotente)
+  if (!conv.length) {
+    return { success: true, message: "Conversation already deleted" };
+  }
+  
+  // Verifica se pertence ao usuário
+  if (conv[0].userId !== userId) {
     return { success: false, message: "Not authorized" };
   }
   
-  // Delete conversation
-  // Note: In production, use db.delete(conversationHistory).where(eq(conversationHistory.id, conversationId))
+  // Delete real da conversa
+  await db.delete(conversationHistory).where(eq(conversationHistory.id, conversationId));
+  
   return { success: true };
 }

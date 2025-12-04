@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Recipes from "./pages/Recipes";
 import ConversationHistory from "./pages/ConversationHistory";
+import Badges from "./pages/Badges";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -15,6 +16,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/receitas" component={Recipes} />
       <Route path="/historico" component={ConversationHistory} />
+      <Route path="/badges" component={Badges} />
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

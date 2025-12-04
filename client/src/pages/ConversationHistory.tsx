@@ -45,6 +45,7 @@ export default function ConversationHistory() {
       userRank={profileQuery.data?.rank}
       userXp={profileQuery.data?.xp}
       userTier={profileQuery.data?.tier}
+      userStreak={profileQuery.data?.streak}
     >
       <div className="space-y-8">
         {/* Header */}

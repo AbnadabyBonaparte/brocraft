@@ -1114,38 +1114,70 @@ const recipes = [
 ];
 
 async function main() {
-  const connection = await mysql.createConnection({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'brocraft',
-  });
+  // Suporta tanto DATABASE_URL quanto variáveis separadas
+  const connectionConfig = process.env.DATABASE_URL 
+    ? process.env.DATABASE_URL
+    : {
+        host: process.env.DB_HOST || 'localhost',
+        user: process.env.DB_USER || 'root',
+        password: process.env.DB_PASSWORD || '',
+        database: process.env.DB_NAME || 'brocraft',
+      };
+
+  console.log('🔌 Conectando ao banco de dados...');
+  const connection = await mysql.createConnection(connectionConfig);
 
   try {
+    let inserted = 0;
+    let skipped = 0;
+
     for (const recipe of recipes) {
-      await connection.execute(
-        `INSERT INTO recipes (name, slug, category, difficulty, description, rajado, classico, mestre, macete, xp, warnings) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          recipe.name,
-          recipe.slug,
-          recipe.category,
-          recipe.difficulty,
-          recipe.description,
-          JSON.stringify(recipe.rajado),
-          JSON.stringify(recipe.classico),
-          JSON.stringify(recipe.mestre),
-          recipe.macete,
-          recipe.xp,
-          JSON.stringify(recipe.warnings),
-        ]
-      );
+      try {
+        // Usa INSERT IGNORE para não falhar se a receita já existir (baseado no slug único)
+        await connection.execute(
+          `INSERT IGNORE INTO recipes (name, slug, category, difficulty, description, rajado, classico, mestre, macete, xp, warnings) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            recipe.name,
+            recipe.slug,
+            recipe.category,
+            recipe.difficulty,
+            recipe.description,
+            JSON.stringify(recipe.rajado),
+            JSON.stringify(recipe.classico),
+            JSON.stringify(recipe.mestre),
+            recipe.macete,
+            recipe.xp,
+            JSON.stringify(recipe.warnings),
+          ]
+        );
+        
+        // Verifica se foi inserido ou ignorado
+        const [result] = await connection.execute(
+          'SELECT ROW_COUNT() as affected'
+        );
+        if (result[0].affected > 0) {
+          inserted++;
+          console.log(`  ✓ ${recipe.name}`);
+        } else {
+          skipped++;
+        }
+      } catch (err) {
+        console.error(`  ✗ Erro em "${recipe.name}":`, err.message);
+      }
     }
-    console.log(`✅ ${recipes.length} receitas inseridas com sucesso!`);
+
+    console.log('\n' + '='.repeat(50));
+    console.log(`✅ Seed concluído!`);
+    console.log(`   📝 Inseridas: ${inserted} receitas`);
+    console.log(`   ⏭️  Ignoradas (já existiam): ${skipped} receitas`);
+    console.log(`   📊 Total processadas: ${recipes.length} receitas`);
   } catch (error) {
     console.error('❌ Erro ao inserir receitas:', error);
+    process.exit(1);
   } finally {
     await connection.end();
+    console.log('🔌 Conexão encerrada.');
   }
 }
 

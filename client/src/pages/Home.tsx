@@ -87,6 +87,7 @@ export default function Home() {
       userRank={profileQuery.data?.rank}
       userXp={profileQuery.data?.xp}
       userTier={profileQuery.data?.tier}
+      userStreak={profileQuery.data?.streak}
       onLogout={logout}
     >
       <div className="space-y-8">

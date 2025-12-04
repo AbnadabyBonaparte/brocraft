@@ -13,6 +13,7 @@ import {
   Flame,
   Zap,
   TrendingUp,
+  History,
 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -20,14 +21,16 @@ interface DashboardLayoutProps {
   userRank?: string;
   userXp?: number;
   userTier?: string;
+  userStreak?: number;
   onLogout?: () => void;
 }
 
 const MENU_ITEMS = [
   { icon: Home, label: "Home", href: "/" },
   { icon: BookOpen, label: "Receitas", href: "/receitas" },
+  { icon: History, label: "Histórico", href: "/historico" },
+  { icon: Award, label: "Badges", href: "/badges" },
   { icon: Users, label: "Comunidade", href: "/comunidade", disabled: true },
-  { icon: Award, label: "Badges", href: "/badges", disabled: true },
   { icon: Settings, label: "Configurações", href: "/settings", disabled: true },
 ];
 
@@ -36,6 +39,7 @@ export function DashboardLayout({
   userRank,
   userXp = 0,
   userTier = "FREE",
+  userStreak = 0,
   onLogout,
 }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -182,7 +186,9 @@ export function DashboardLayout({
                 <Flame className="h-4 w-4 text-orange-400" />
                 <span className="text-xs text-gray-400">Streak</span>
               </div>
-              <p className="text-lg font-bold text-orange-400">5 dias</p>
+              <p className="text-lg font-bold text-orange-400">
+                {userStreak} {userStreak === 1 ? "dia" : "dias"}
+              </p>
             </div>
           </div>
         </div>

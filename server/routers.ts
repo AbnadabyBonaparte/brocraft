@@ -89,12 +89,16 @@ export const appRouter = router({
           
           // Add XP and check for rank up
           const xpResult = await db.addXP(userId, xpGained);
+          
+          // Check and award badges
+          const badgeResult = await db.checkAndAwardBadges(userId);
 
           return {
             response: assistantMessage,
             xpGained,
             rankUp: xpResult.rankUp,
             newRank: xpResult.newRank,
+            newBadges: badgeResult.newlyAwarded,
           };
         } catch (error) {
           console.error("Chat error:", error);
@@ -129,6 +133,18 @@ export const appRouter = router({
 
         return db.addXP(userId, input.amount);
       }),
+    
+    // Badges
+    getBadges: protectedProcedure.query(async ({ ctx }) => {
+      const userId = ctx.user?.id;
+      if (!userId) throw new Error("User not authenticated");
+
+      return db.getUserBadges(userId);
+    }),
+    
+    getAllBadgeDefinitions: publicProcedure.query(() => {
+      return db.getAllBadgeDefinitions();
+    }),
   }),
 
   // Recipes Router
@@ -177,7 +193,15 @@ export const appRouter = router({
         const userId = ctx.user?.id;
         if (!userId) throw new Error("User not authenticated");
 
-        return db.completeRecipe(userId, input.userRecipeId, input.rating, input.photo);
+        const result = await db.completeRecipe(userId, input.userRecipeId, input.rating, input.photo);
+        
+        // Check and award badges after completing recipe
+        const badgeResult = await db.checkAndAwardBadges(userId);
+        
+        return {
+          ...result,
+          newBadges: badgeResult.newlyAwarded,
+        };
       }),
   }),
 
