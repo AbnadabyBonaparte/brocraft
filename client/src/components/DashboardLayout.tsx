@@ -15,8 +15,14 @@ import {
   TrendingUp,
   History,
   Crown,
+  MessageSquare,
+  ExternalLink,
 } from "lucide-react";
 import { UpgradeCTA } from "./PricingSection";
+
+// TODO: [BETA] Configure final feedback email/URL here
+const BETA_FEEDBACK_EMAIL = "feedback@brocraft.app";
+const BETA_FEEDBACK_SUBJECT = "BROCRAFT Beta Feedback";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -219,6 +225,23 @@ export function DashboardLayout({
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
+        {/* Beta Banner */}
+        <div className="bg-gradient-to-r from-orange-600/90 to-red-600/90 text-white px-4 py-2 text-center text-sm font-medium flex items-center justify-center gap-3 flex-wrap">
+          <span className="flex items-center gap-2">
+            <span className="animate-pulse">🔥</span>
+            <span className="font-bold">BROCRAFT v∞ — Beta Fechado</span>
+          </span>
+          <span className="hidden sm:inline text-orange-200">|</span>
+          <a
+            href={`mailto:${BETA_FEEDBACK_EMAIL}?subject=${encodeURIComponent(BETA_FEEDBACK_SUBJECT)}`}
+            className="flex items-center gap-1 text-orange-100 hover:text-white underline underline-offset-2 transition-colors"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            Enviar Feedback
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+
         {/* Top Bar */}
         <div className="h-20 border-b border-gray-800/50 bg-gray-950/50 backdrop-blur-sm flex items-center justify-between px-6 sticky top-0 z-40">
           <Button

@@ -82,6 +82,9 @@ export const appRouter = router({
             const messagesToday = await db.countUserMessagesToday(userId);
             
             if (messagesToday >= tierLimits.dailyMessages) {
+              // [BROCRAFT][EVENT] Telemetria de limite de mensagens atingido
+              console.log(`[BROCRAFT][EVENT] type="limit_reached" userId=${userId} tier="${tier}" dailyLimit=${tierLimits.dailyMessages} messagesUsed=${messagesToday}`);
+              
               throw new TRPCError({
                 code: "FORBIDDEN",
                 message: `Você atingiu o limite de ${tierLimits.dailyMessages} mensagens diárias do plano ${tier}. Faça upgrade para continuar conversando!`,

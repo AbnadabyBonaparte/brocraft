@@ -1,3 +1,21 @@
+/**
+ * BROCRAFT Database Module
+ * 
+ * Contains all database operations using Drizzle ORM.
+ * 
+ * TELEMETRIA DE EVENTOS:
+ * Este arquivo contém logs de eventos importantes no formato:
+ * [BROCRAFT][EVENT] type="event_type" userId=X ...
+ * 
+ * Eventos rastreados:
+ * - rank_up: Quando usuário sobe de rank
+ * - recipe_completed: Quando usuário completa uma receita
+ * - post_created: Quando usuário cria um post na comunidade
+ * 
+ * TODO: [PROD] Substituir logs de console por integração com sistema de analytics
+ * (ex: Sentry, PostHog, Amplitude, ou serviço próprio de telemetria)
+ */
+
 import { eq, and, desc, gte, lt, sql, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, messages, recipes, userRecipes, badges, communityPosts, votes, products, cartItems, orders, conversationHistory, InsertConversationHistory, purchases } from "../drizzle/schema";
@@ -127,14 +145,21 @@ export async function addXP(userId: number, amount: number) {
   const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!user.length) throw new Error("User not found");
   
+  const oldRank = user[0].rank;
   const newXP = user[0].xp + amount;
   const newRank = calculateRank(newXP);
+  const rankUp = newRank !== oldRank;
   
   await db.update(users)
     .set({ xp: newXP, rank: newRank })
     .where(eq(users.id, userId));
   
-  return { newXP, newRank, rankUp: newRank !== user[0].rank };
+  // [BROCRAFT][EVENT] Telemetria de rank up
+  if (rankUp) {
+    console.log(`[BROCRAFT][EVENT] type="rank_up" userId=${userId} oldRank="${oldRank}" newRank="${newRank}" totalXP=${newXP}`);
+  }
+  
+  return { newXP, newRank, rankUp };
 }
 
 function calculateRank(xp: number) {
@@ -380,7 +405,8 @@ export async function completeRecipe(userId: number, userRecipeId: number, ratin
   const xpReward = recipe.xp;
   await addXP(userId, xpReward);
   
-  // Check for badges (future enhancement)
+  // [BROCRAFT][EVENT] Telemetria de receita completada
+  console.log(`[BROCRAFT][EVENT] type="recipe_completed" userId=${userId} recipeId=${recipe.id} difficulty="${recipe.difficulty}" category="${recipe.category}" xpAwarded=${xpReward}`);
   
   return { success: true, xpGained: xpReward };
 }
@@ -682,6 +708,9 @@ export async function createCommunityPost(userId: number, data: any) {
     .where(eq(communityPosts.userId, userId))
     .orderBy(desc(communityPosts.createdAt))
     .limit(1);
+  
+  // [BROCRAFT][EVENT] Telemetria de post criado
+  console.log(`[BROCRAFT][EVENT] type="post_created" userId=${userId} postId=${newPost[0]?.id} category="${data.category}"`);
   
   return {
     success: true,

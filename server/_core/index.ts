@@ -8,7 +8,15 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { stripeWebhookRouter } from "./stripeWebhook";
-import { validateEnv } from "./env";
+import { validateEnv, ENV } from "./env";
+
+// Track server start time for uptime calculation
+const SERVER_START_TIME = Date.now();
+
+// Version info (read from package.json or hardcoded)
+const APP_VERSION = "1.0.0";
+// TODO: [BETA] Populate GIT_COMMIT from CI/CD build process (e.g., process.env.GIT_COMMIT)
+const GIT_COMMIT = process.env.GIT_COMMIT || "unknown";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -54,6 +62,37 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+  // =============================================
+  // HEALTH & VERSION ENDPOINTS (lightweight, no DB/Redis)
+  // =============================================
+  app.get("/api/health", (req, res) => {
+    try {
+      const uptimeSeconds = Math.floor((Date.now() - SERVER_START_TIME) / 1000);
+      res.json({
+        status: "ok",
+        uptime: uptimeSeconds,
+        env: ENV.isProduction ? "production" : "development",
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[BROCRAFT][HEALTH] ❌ Health check failed:", error);
+      res.status(500).json({ status: "error", message: "Health check failed" });
+    }
+  });
+
+  app.get("/api/version", (req, res) => {
+    res.json({
+      app: "brocraft",
+      version: APP_VERSION,
+      commit: GIT_COMMIT,
+      env: ENV.isProduction ? "production" : "development",
+    });
+  });
+
+  // TODO: [PROD] Add /api/health/full endpoint with DB/Redis connectivity checks
+  // for more comprehensive health monitoring in production
+
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
   // tRPC API

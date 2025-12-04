@@ -112,6 +112,8 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   // 2. Atualizar tier do usuário
   await db.updateUserTier(userIdNum, tier);
 
+  // [BROCRAFT][EVENT] Telemetria de upgrade de tier
+  console.log(`[BROCRAFT][EVENT] type="tier_upgrade" userId=${userIdNum} newTier="${tier}" stripeSessionId="${session.id}"`);
   console.log(`[BROCRAFT][Stripe] ✅ User ${userIdNum} upgraded to ${tier}`);
 }
 
