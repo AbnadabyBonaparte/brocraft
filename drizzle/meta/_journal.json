@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1762819815101,
+      "tag": "0000_supreme_lord_hawal",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1762819939400,
+      "tag": "0001_funny_next_avengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1764252558602,
+      "tag": "0002_overjoyed_slyde",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1764253081267,
+      "tag": "0003_colorful_mach_iv",
+      "breakpoints": true
+    }
+  ]
+}
