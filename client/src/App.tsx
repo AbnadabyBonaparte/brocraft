@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import Recipes from "./pages/Recipes";
 import ConversationHistory from "./pages/ConversationHistory";
 import Badges from "./pages/Badges";
+import Community from "./pages/Community";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -17,6 +18,7 @@ function Router() {
       <Route path="/receitas" component={Recipes} />
       <Route path="/historico" component={ConversationHistory} />
       <Route path="/badges" component={Badges} />
+      <Route path="/comunidade" component={Community} />
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

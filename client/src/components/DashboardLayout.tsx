@@ -30,7 +30,7 @@ const MENU_ITEMS = [
   { icon: BookOpen, label: "Receitas", href: "/receitas" },
   { icon: History, label: "Histórico", href: "/historico" },
   { icon: Award, label: "Badges", href: "/badges" },
-  { icon: Users, label: "Comunidade", href: "/comunidade", disabled: true },
+  { icon: Users, label: "Comunidade", href: "/comunidade" },
   { icon: Settings, label: "Configurações", href: "/settings", disabled: true },
 ];
 

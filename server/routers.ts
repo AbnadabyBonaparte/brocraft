@@ -1,4 +1,9 @@
-import { COOKIE_NAME } from "@shared/const";
+import { 
+  COOKIE_NAME, 
+  LEADERBOARD_TIMEFRAMES, 
+  COMMUNITY_CATEGORY_VALUES, 
+  VOTE_TYPES 
+} from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
@@ -213,26 +218,29 @@ export const appRouter = router({
 
   // Community Router
   community: router({
+    // Lista posts com paginação cursor-based
     getPosts: publicProcedure
       .input(z.object({
-        category: z.string().optional(),
-        limit: z.number().default(20),
-        offset: z.number().default(0),
+        category: z.enum(COMMUNITY_CATEGORY_VALUES as [string, ...string[]]).optional(),
+        limit: z.number().min(1).max(50).default(20),
+        cursor: z.number().nullish(), // ID do último post para paginação
       }))
-      .query(async ({ input }) => {
-        return db.getCommunityPosts(input.category, input.limit, input.offset);
+      .query(async ({ input, ctx }) => {
+        // Passa userId se autenticado para calcular hasVoted
+        const currentUserId = ctx.user?.id;
+        return db.getCommunityPosts(input.category, input.limit, input.cursor ?? undefined, currentUserId);
       }),
 
     createPost: protectedProcedure
       .input(z.object({
         title: z.string().min(1).max(255),
-        description: z.string().optional(),
-        imageUrl: z.string().optional(),
-        videoUrl: z.string().optional(),
-        category: z.string(),
+        description: z.string().max(5000).optional(),
+        imageUrl: z.string().url().optional(),
+        videoUrl: z.string().url().optional(),
+        category: z.enum(COMMUNITY_CATEGORY_VALUES as [string, ...string[]]),
         recipeId: z.number().optional(),
-        instagramUrl: z.string().optional(),
-        tiktokUrl: z.string().optional(),
+        instagramUrl: z.string().url().optional(),
+        tiktokUrl: z.string().url().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
@@ -241,22 +249,23 @@ export const appRouter = router({
         return db.createCommunityPost(userId, input);
       }),
 
+    // Toggle de voto (vota/desvota)
     votePost: protectedProcedure
       .input(z.object({
         postId: z.number(),
-        voteType: z.enum(["LIKE", "FIRE", "STAR"]),
+        voteType: z.enum(VOTE_TYPES as [string, ...string[]]).default("LIKE"),
       }))
       .mutation(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
         if (!userId) throw new Error("User not authenticated");
 
-        return db.votePost(userId, input.postId, input.voteType);
+        return db.toggleVotePost(userId, input.postId, input.voteType);
       }),
 
     getLeaderboard: publicProcedure
       .input(z.object({
-        category: z.string().optional(),
-        timeframe: z.enum(["DAY", "WEEK", "MONTH", "ALL"]).default("WEEK"),
+        category: z.enum(COMMUNITY_CATEGORY_VALUES as [string, ...string[]]).optional(),
+        timeframe: z.enum(LEADERBOARD_TIMEFRAMES as [string, ...string[]]).default("ALL"),
       }))
       .query(async ({ input }) => {
         return db.getLeaderboard(input.category, input.timeframe);

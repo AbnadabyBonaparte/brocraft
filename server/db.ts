@@ -1,7 +1,8 @@
-import { eq, and, desc, gte, sql } from "drizzle-orm";
+import { eq, and, desc, gte, lt, sql, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, messages, recipes, userRecipes, badges, communityPosts, votes, products, cartItems, orders, conversationHistory, InsertConversationHistory } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import type { LeaderboardTimeframe, CommunityCategory, VoteType } from "@shared/const";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -582,30 +583,78 @@ export function getAllBadgeDefinitions() {
   }));
 }
 
-// Community Posts
-export async function getCommunityPosts(category?: string, limit: number = 20, offset: number = 0) {
+// Community Posts - Com paginação cursor-based e hasVoted
+export async function getCommunityPosts(
+  category?: CommunityCategory,
+  limit: number = 20,
+  cursor?: number, // ID do último post (para paginação)
+  currentUserId?: number // Para calcular hasVoted
+) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  if (category) {
-    return db.select().from(communityPosts)
-      .where(eq(communityPosts.category, category as any))
-      .orderBy(desc(communityPosts.votes))
-      .limit(limit)
-      .offset(offset);
+  // Construir condições
+  const conditions: any[] = [];
+  if (category) conditions.push(eq(communityPosts.category, category as any));
+  if (cursor) conditions.push(lt(communityPosts.id, cursor)); // Posts anteriores ao cursor
+  
+  // Buscar limit + 1 para saber se há mais
+  const posts = await db.select({
+    id: communityPosts.id,
+    userId: communityPosts.userId,
+    title: communityPosts.title,
+    description: communityPosts.description,
+    imageUrl: communityPosts.imageUrl,
+    videoUrl: communityPosts.videoUrl,
+    category: communityPosts.category,
+    votes: communityPosts.votes,
+    comments: communityPosts.comments,
+    createdAt: communityPosts.createdAt,
+    authorName: users.name,
+  })
+    .from(communityPosts)
+    .leftJoin(users, eq(communityPosts.userId, users.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(communityPosts.id))
+    .limit(limit + 1);
+  
+  // Verificar se há mais posts
+  const hasMore = posts.length > limit;
+  const items = hasMore ? posts.slice(0, limit) : posts;
+  const nextCursor = hasMore ? items[items.length - 1]?.id : null;
+  
+  // Se usuário autenticado, buscar votos dele
+  let userVotedPostIds: Set<number> = new Set();
+  if (currentUserId && items.length > 0) {
+    const postIds = items.map(p => p.id);
+    const userVotes = await db.select({ postId: votes.postId })
+      .from(votes)
+      .where(and(
+        eq(votes.userId, currentUserId),
+        inArray(votes.postId, postIds)
+      ));
+    userVotedPostIds = new Set(userVotes.map(v => v.postId));
   }
   
-  return db.select().from(communityPosts)
-    .orderBy(desc(communityPosts.votes))
-    .limit(limit)
-    .offset(offset);
+  return {
+    items: items.map(post => ({
+      ...post,
+      authorName: post.authorName || "Bro Anônimo",
+      hasVoted: userVotedPostIds.has(post.id),
+    })),
+    nextCursor,
+  };
 }
 
 export async function createCommunityPost(userId: number, data: any) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(communityPosts).values({
+  // Buscar nome do autor
+  const user = await db.select({ name: users.name }).from(users).where(eq(users.id, userId)).limit(1);
+  const authorName = user[0]?.name || "Bro Anônimo";
+  
+  await db.insert(communityPosts).values({
     userId,
     title: data.title,
     description: data.description,
@@ -617,56 +666,134 @@ export async function createCommunityPost(userId: number, data: any) {
     tiktokUrl: data.tiktokUrl,
   });
   
-  return result;
+  // Buscar o post recém-criado
+  const newPost = await db.select()
+    .from(communityPosts)
+    .where(eq(communityPosts.userId, userId))
+    .orderBy(desc(communityPosts.createdAt))
+    .limit(1);
+  
+  return {
+    success: true,
+    post: {
+      ...newPost[0],
+      authorName,
+    },
+  };
 }
 
-export async function votePost(userId: number, postId: number, voteType: string) {
+/**
+ * Toggle de voto: se não votou, vota; se já votou, remove o voto.
+ */
+export async function toggleVotePost(userId: number, postId: number, voteType: VoteType) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  // Check if already voted
+  // Verificar se post existe
+  const post = await db.select()
+    .from(communityPosts)
+    .where(eq(communityPosts.id, postId))
+    .limit(1);
+  
+  if (!post.length) {
+    return { success: false, message: "Post not found", newVoteCount: 0, hasVoted: false };
+  }
+  
+  // Verificar se já votou
   const existing = await db.select()
     .from(votes)
     .where(and(eq(votes.userId, userId), eq(votes.postId, postId)))
     .limit(1);
   
+  let newVoteCount = post[0].votes;
+  let hasVoted: boolean;
+  
   if (existing.length) {
-    return { success: false, message: "Already voted" };
+    // Já votou → remover voto (toggle off)
+    await db.delete(votes)
+      .where(and(eq(votes.userId, userId), eq(votes.postId, postId)));
+    
+    newVoteCount = Math.max(0, post[0].votes - 1);
+    hasVoted = false;
+  } else {
+    // Não votou → adicionar voto (toggle on)
+    await db.insert(votes).values({
+      userId,
+      postId,
+      voteType: voteType as any,
+    });
+    
+    newVoteCount = post[0].votes + 1;
+    hasVoted = true;
   }
   
-  // Add vote
-  await db.insert(votes).values({
-    userId,
-    postId,
-    voteType: voteType as any,
-  });
+  // Atualizar contagem no post
+  await db.update(communityPosts)
+    .set({ votes: newVoteCount })
+    .where(eq(communityPosts.id, postId));
   
-  // Update post vote count
-  const post = await db.select().from(communityPosts).where(eq(communityPosts.id, postId)).limit(1);
-  if (post.length) {
-    await db.update(communityPosts)
-      .set({ votes: post[0].votes + 1 })
-      .where(eq(communityPosts.id, postId));
-  }
-  
-  return { success: true };
+  return { 
+    success: true, 
+    newVoteCount, 
+    hasVoted,
+    action: hasVoted ? "voted" : "unvoted",
+  };
 }
 
-export async function getLeaderboard(category?: string, timeframe: string = "WEEK") {
+// Legacy: mantido para compatibilidade (redirecionado para toggle)
+export async function votePost(userId: number, postId: number, voteType: string) {
+  return toggleVotePost(userId, postId, voteType as VoteType);
+}
+
+export async function getLeaderboard(category?: CommunityCategory, timeframe: LeaderboardTimeframe = "ALL") {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  // For now, return top posts by votes
-  if (category) {
-    return db.select().from(communityPosts)
-      .where(eq(communityPosts.category, category as any))
-      .orderBy(desc(communityPosts.votes))
-      .limit(10);
+  // Calcular data de corte baseado no timeframe
+  let fromDate: Date | null = null;
+  const now = new Date();
+  
+  switch (timeframe) {
+    case "DAY":
+      fromDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      break;
+    case "WEEK":
+      fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case "MONTH":
+      fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case "ALL":
+    default:
+      fromDate = null;
+      break;
   }
   
-  return db.select().from(communityPosts)
+  // Construir condições
+  const conditions: any[] = [];
+  if (category) conditions.push(eq(communityPosts.category, category as any));
+  if (fromDate) conditions.push(gte(communityPosts.createdAt, fromDate));
+  
+  // Query com JOIN para pegar nome do autor
+  const leaderboard = await db.select({
+    id: communityPosts.id,
+    userId: communityPosts.userId,
+    title: communityPosts.title,
+    votes: communityPosts.votes,
+    category: communityPosts.category,
+    createdAt: communityPosts.createdAt,
+    authorName: users.name,
+  })
+    .from(communityPosts)
+    .leftJoin(users, eq(communityPosts.userId, users.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(communityPosts.votes))
     .limit(10);
+  
+  return leaderboard.map(post => ({
+    ...post,
+    authorName: post.authorName || "Bro Anônimo",
+  }));
 }
 
 // Marketplace
