@@ -9,6 +9,8 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { stripeWebhookRouter } from "./stripeWebhook";
 import { validateEnv, ENV } from "./env";
+import { generalRateLimiter, logRateLimitConfig } from "./rateLimit";
+import { initMonitoring, getSentryErrorHandler } from "./monitoring";
 
 // Track server start time for uptime calculation
 const SERVER_START_TIME = Date.now();
@@ -41,8 +43,17 @@ async function startServer() {
   // Validate environment variables on startup
   validateEnv();
   
+  // Initialize monitoring (Sentry)
+  initMonitoring();
+  
+  // Log rate limit configuration
+  logRateLimitConfig();
+  
   const app = express();
   const server = createServer(app);
+  
+  // Apply general rate limiting to all API routes
+  app.use("/api", generalRateLimiter);
 
   // =============================================
   // STRIPE WEBHOOK (must be before body parser!)
@@ -103,6 +114,9 @@ async function startServer() {
       createContext,
     })
   );
+  // Sentry error handler (must be before other error handlers)
+  app.use(getSentryErrorHandler());
+
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);

@@ -5,9 +5,40 @@ import fs from "node:fs";
 import path from "path";
 import { defineConfig } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
+import { VitePWA } from "vite-plugin-pwa";
 
+const pwaPlugin = VitePWA({
+  registerType: "autoUpdate",
+  includeAssets: ["icons/*.png"],
+  manifest: false, // Usamos manifest.json manual
+  workbox: {
+    globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+    runtimeCaching: [
+      {
+        urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+        handler: "CacheFirst",
+        options: {
+          cacheName: "google-fonts-cache",
+          expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
+        },
+      },
+      {
+        urlPattern: /\/api\/trpc\/.*/i,
+        handler: "NetworkFirst",
+        options: {
+          cacheName: "api-cache",
+          expiration: { maxEntries: 50, maxAgeSeconds: 60 * 5 },
+          networkTimeoutSeconds: 10,
+        },
+      },
+    ],
+  },
+  devOptions: {
+    enabled: false, // Desabilitar em dev para evitar conflitos
+  },
+});
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime()];
+const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), pwaPlugin];
 
 export default defineConfig({
   plugins,

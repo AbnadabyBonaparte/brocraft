@@ -117,7 +117,7 @@ export default function Badges() {
                       <div
                         className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl shadow-lg"
                         style={{
-                          backgroundColor: `${badge.color}20` || "#f9731620",
+                          backgroundColor: badge.color ? `${badge.color}20` : "#f9731620",
                           border: `2px solid ${badge.color || "#f97316"}`,
                         }}
                       >

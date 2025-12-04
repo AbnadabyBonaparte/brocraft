@@ -32,6 +32,16 @@ export const ENV = {
   upstashRedisUrl: process.env.UPSTASH_REDIS_URL ?? "",
   upstashRedisToken: process.env.UPSTASH_REDIS_TOKEN ?? "",
   
+  // Monitoring (optional)
+  sentryDsn: process.env.SENTRY_DSN ?? "",
+  enableSentry: process.env.ENABLE_SENTRY === "true",
+  
+  // Rate Limiting
+  rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "60000"),
+  rateLimitMaxChat: parseInt(process.env.RATE_LIMIT_MAX_CHAT || "30"),
+  rateLimitMaxBilling: parseInt(process.env.RATE_LIMIT_MAX_BILLING || "10"),
+  rateLimitMaxCommunity: parseInt(process.env.RATE_LIMIT_MAX_COMMUNITY || "60"),
+  
   // URLs
   frontendBaseUrl: process.env.FRONTEND_BASE_URL ?? "http://localhost:5173",
 };

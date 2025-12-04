@@ -30,12 +30,32 @@ Se não configuradas, o cache LLM é desabilitado (maior custo de API).
 | `UPSTASH_REDIS_URL` | URL do Redis Upstash |
 | `UPSTASH_REDIS_TOKEN` | Token de autenticação |
 
+### Monitoring (Sentry)
+Se não configuradas, o error tracking é desabilitado.
+
+| Variável | Descrição | Default |
+|----------|-----------|---------|
+| `SENTRY_DSN` | DSN do projeto Sentry | - |
+| `ENABLE_SENTRY` | Habilitar Sentry (`true`/`false`) | `false` |
+
+### Rate Limiting
+Configuração de limites por minuto para proteção contra abuso.
+
+| Variável | Descrição | Default |
+|----------|-----------|---------|
+| `RATE_LIMIT_WINDOW_MS` | Janela de tempo em ms | `60000` (1 min) |
+| `RATE_LIMIT_MAX_CHAT` | Limite para chat | `30` |
+| `RATE_LIMIT_MAX_BILLING` | Limite para billing | `10` |
+| `RATE_LIMIT_MAX_COMMUNITY` | Limite para comunidade | `60` |
+| `RATE_LIMIT_DEV` | Ativar rate limit em dev | `false` |
+
 ### URLs
 
 | Variável | Descrição | Default |
 |----------|-----------|---------|
 | `FRONTEND_BASE_URL` | URL base do frontend | `http://localhost:5173` |
 | `NODE_ENV` | Ambiente | `development` |
+| `GIT_COMMIT` | Hash do commit (CI/CD) | `unknown` |
 
 ## Configuração do Stripe Webhook
 

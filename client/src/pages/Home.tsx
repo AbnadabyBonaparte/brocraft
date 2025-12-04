@@ -6,8 +6,9 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { HeroSection } from "@/components/HeroSection";
 import { FeaturesSection } from "@/components/FeaturesSection";
 import { PricingSection } from "@/components/PricingSection";
+import { OnboardingCard } from "@/components/OnboardingCard";
 import { trpc } from "@/lib/trpc";
-import { Loader2, Flame, BookOpen, Users, Zap, ArrowRight, RotateCcw } from "lucide-react";
+import { Loader2, Flame, BookOpen, Users, Award, ArrowRight, RotateCcw } from "lucide-react";
 import { useState } from "react";
 
 export default function Home() {
@@ -59,9 +60,8 @@ export default function Home() {
               <div>
                 <h4 className="text-sm font-bold text-white uppercase mb-4">Legal</h4>
                 <ul className="space-y-2 text-sm text-gray-400">
-                  <li><a href="#" className="hover:text-orange-400">Termos</a></li>
-                  <li><a href="#" className="hover:text-orange-400">Privacidade</a></li>
-                  <li><a href="#" className="hover:text-orange-400">LGPD</a></li>
+                  <li><a href="/docs/terms" className="hover:text-orange-400">Termos de Uso</a></li>
+                  <li><a href="/docs/privacy" className="hover:text-orange-400">Privacidade</a></li>
                 </ul>
               </div>
               <div>
@@ -127,6 +127,9 @@ export default function Home() {
 
           {/* Sidebar (1/3) */}
           <div className="space-y-6">
+            {/* Onboarding Card */}
+            <OnboardingCard />
+
             {/* Quick Actions */}
             <Card className="bg-gray-800/30 border-gray-700/50 backdrop-blur-sm overflow-hidden">
               <div className="bg-gradient-to-r from-orange-600/20 to-red-600/20 border-b border-gray-700/50 px-6 py-4">
@@ -140,26 +143,20 @@ export default function Home() {
                     <ArrowRight className="h-4 w-4 ml-auto text-orange-400" />
                   </Button>
                 </a>
-                <Button
-                  disabled
-                  className="w-full justify-start bg-gray-800/30 text-gray-500 border border-gray-700/50 py-6 font-semibold rounded-lg cursor-not-allowed opacity-50"
-                >
-                  <Users className="h-5 w-5 mr-3" />
-                  Comunidade
-                  <span className="ml-auto text-xs bg-gray-900 px-2 py-1 rounded-full">
-                    Em breve
-                  </span>
-                </Button>
-                <Button
-                  disabled
-                  className="w-full justify-start bg-gray-800/30 text-gray-500 border border-gray-700/50 py-6 font-semibold rounded-lg cursor-not-allowed opacity-50"
-                >
-                  <Zap className="h-5 w-5 mr-3" />
-                  Badges
-                  <span className="ml-auto text-xs bg-gray-900 px-2 py-1 rounded-full">
-                    Em breve
-                  </span>
-                </Button>
+                <a href="/comunidade">
+                  <Button className="w-full justify-start bg-gradient-to-r from-blue-600/20 to-purple-600/20 hover:from-blue-600/30 hover:to-purple-600/30 text-blue-300 border border-blue-500/30 py-6 font-semibold rounded-lg">
+                    <Users className="h-5 w-5 mr-3" />
+                    Comunidade
+                    <ArrowRight className="h-4 w-4 ml-auto text-blue-400" />
+                  </Button>
+                </a>
+                <a href="/badges">
+                  <Button className="w-full justify-start bg-gradient-to-r from-purple-600/20 to-pink-600/20 hover:from-purple-600/30 hover:to-pink-600/30 text-purple-300 border border-purple-500/30 py-6 font-semibold rounded-lg">
+                    <Award className="h-5 w-5 mr-3" />
+                    Badges
+                    <ArrowRight className="h-4 w-4 ml-auto text-purple-400" />
+                  </Button>
+                </a>
               </div>
             </Card>
 

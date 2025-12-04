@@ -11,6 +11,8 @@ import Badges from "./pages/Badges";
 import Community from "./pages/Community";
 import UpgradeSuccess from "./pages/UpgradeSuccess";
 import UpgradeCancel from "./pages/UpgradeCancel";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -23,6 +25,8 @@ function Router() {
       <Route path="/comunidade" component={Community} />
       <Route path="/upgrade/sucesso" component={UpgradeSuccess} />
       <Route path="/upgrade/cancelado" component={UpgradeCancel} />
+      <Route path="/docs/terms" component={Terms} />
+      <Route path="/docs/privacy" component={Privacy} />
       <Route path="/404" component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
