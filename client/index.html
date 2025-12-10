@@ -11,24 +11,22 @@
     
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" type="image/png" href="%VITE_APP_LOGO%" />
-    <link rel="apple-touch-icon" href="%VITE_APP_LOGO%" />
-    
+    <link rel="icon" type="image/png" href="/icons/icon-192x192.png" />
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+
     <!-- iOS PWA meta tags -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="BROCRAFT" />
-    
-    <title>%VITE_APP_TITLE%</title>
+
+    <title>BROCRAFT - Assistente IA de Fermentação</title>
   </head>
 
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script
-      defer
-      src="%VITE_ANALYTICS_ENDPOINT%/umami"
-      data-website-id="%VITE_ANALYTICS_WEBSITE_ID%"></script>
+    <!-- Analytics script comentado - configure as variáveis de ambiente se necessário -->
+    <!-- <script defer src="YOUR_ANALYTICS_ENDPOINT/umami" data-website-id="YOUR_WEBSITE_ID"></script> -->
   </body>
 
 </html>

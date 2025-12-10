@@ -193,28 +193,30 @@ export function ChatBox() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-orange-50 to-amber-50">
+    <div className="flex flex-col h-[600px] md:h-[700px] lg:h-[800px] bg-gradient-to-b from-orange-50 to-amber-50">
       {/* Header */}
-      <div className="p-4 bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-lg">
-        <h1 className="text-2xl font-bold">🔥 BROCRAFT v∞</h1>
-        <p className="text-sm opacity-90">Fogo aceso. Fermento vivo.</p>
+      <div className="p-3 md:p-4 bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-lg flex-shrink-0">
+        <h1 className="text-xl md:text-2xl font-bold">🔥 BROCRAFT v∞</h1>
+        <p className="text-xs md:text-sm opacity-90">Fogo aceso. Fermento vivo.</p>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4">
         {messages.map((msg, idx) => (
           <div
             key={idx}
             className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <Card
-              className={`max-w-xs lg:max-w-md px-4 py-3 ${
+              className={`max-w-[85%] sm:max-w-xs lg:max-w-md px-3 md:px-4 py-2 md:py-3 ${
                 msg.role === "user"
                   ? "bg-orange-600 text-white rounded-lg"
                   : "bg-white text-gray-900 rounded-lg border border-orange-200"
               }`}
             >
-              <Streamdown>{msg.content}</Streamdown>
+              <div className="text-sm md:text-base">
+                <Streamdown>{msg.content}</Streamdown>
+              </div>
             </Card>
           </div>
         ))}
@@ -222,7 +224,7 @@ export function ChatBox() {
           <div className="flex justify-start">
             <div className="flex items-center space-x-2 text-orange-600">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>BROCRAFT está pensando...</span>
+              <span className="text-sm md:text-base">BROCRAFT está pensando...</span>
             </div>
           </div>
         )}
@@ -230,43 +232,43 @@ export function ChatBox() {
       </div>
 
       {/* Input */}
-      <div className="p-4 bg-white border-t border-orange-200 space-y-2">
+      <div className="p-3 md:p-4 bg-white border-t border-orange-200 space-y-2 flex-shrink-0">
         {/* Limite de mensagens warning */}
         {limitReached && (
-          <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-2 md:p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-xs md:text-sm">
             <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-            <span>Limite diário atingido. Faça upgrade para continuar!</span>
-            <a href="/#pricing" className="ml-auto text-orange-600 font-semibold hover:underline">
+            <span className="flex-1">Limite diário atingido. Faça upgrade para continuar!</span>
+            <a href="/#pricing" className="text-orange-600 font-semibold hover:underline whitespace-nowrap">
               Ver Planos
             </a>
           </div>
         )}
-        
+
         <div className="flex gap-2">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && !limitReached && handleSend()}
-            placeholder={limitReached ? "Limite atingido - faça upgrade para continuar" : "Pergunte algo sobre fermentação..."}
+            placeholder={limitReached ? "Limite atingido - upgrade" : "Pergunte sobre fermentação..."}
             disabled={isLoading || limitReached}
-            className="flex-1"
+            className="flex-1 text-sm md:text-base"
           />
           <Button
             onClick={handleSend}
             disabled={isLoading || !input.trim() || limitReached}
-            className="bg-orange-600 hover:bg-orange-700 disabled:opacity-50"
+            className="bg-orange-600 hover:bg-orange-700 disabled:opacity-50 flex-shrink-0"
           >
             <Send className="h-4 w-4" />
           </Button>
         </div>
-        <div className="flex gap-2 text-xs text-gray-500">
+        <div className="flex flex-wrap gap-2 text-xs text-gray-500">
           <span className="flex items-center gap-1">
             <Sparkles className="h-3 w-3 text-orange-500" />
             XP: +{totalXpGained}
           </span>
           {messagesRemaining !== null && (
             <span className={`${messagesRemaining <= 3 ? 'text-amber-600 font-semibold' : ''}`}>
-              • {messagesRemaining} msgs restantes hoje
+              • {messagesRemaining} msgs restantes
             </span>
           )}
           <Button
@@ -274,9 +276,9 @@ export function ChatBox() {
             size="sm"
             onClick={handleReset}
             disabled={saveHistoryMutation.isPending}
-            className="ml-auto text-orange-600 hover:text-orange-700"
+            className="ml-auto text-orange-600 hover:text-orange-700 text-xs"
           >
-            {saveHistoryMutation.isPending ? "Salvando..." : "Resetar Chat"}
+            {saveHistoryMutation.isPending ? "Salvando..." : "Resetar"}
           </Button>
         </div>
       </div>
