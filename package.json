@@ -15,6 +15,8 @@
     "lint": "eslint client/src server --max-warnings=50",
     "lint:fix": "eslint client/src server --fix",
     "test": "vitest run",
+    "suprema:check": "scripts/suprema-checklist.sh",
+    "suprema:check:strict": "SUPREMA_STRICT=1 scripts/suprema-checklist.sh",
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
     "seed:recipes": "node scripts/seed-recipes.mjs"
   },
