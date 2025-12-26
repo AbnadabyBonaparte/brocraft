@@ -27,10 +27,14 @@ export function ChatBox() {
   const [totalXpGained, setTotalXpGained] = useState(0);
   const [messagesRemaining, setMessagesRemaining] = useState<number | null>(null);
   const [limitReached, setLimitReached] = useState(false);
+  const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const sendMutation = trpc.chat.send.useMutation();
-  const historyQuery = trpc.chat.history.useQuery({ limit: 50 });
+  const historyQuery = trpc.chat.history.useQuery(
+    { limit: 50 },
+    { refetchInterval: 8000, staleTime: 5000, retry: 2 }
+  );
   const saveHistoryMutation = trpc.conversationHistory.save.useMutation();
 
   // Scroll to bottom when messages change
@@ -40,19 +44,51 @@ export function ChatBox() {
 
   // Load history on mount
   useEffect(() => {
-    if (historyQuery.data) {
-      const loadedMessages = historyQuery.data
-        .reverse()
-        .map((msg) => ({
-          role: msg.role as "user" | "assistant",
-          content: msg.content,
-          timestamp: new Date(msg.createdAt),
-        }));
-      if (loadedMessages.length > 0) {
-        setMessages(loadedMessages);
+    if (!historyQuery.data) return;
+
+    const serverMessages = [...historyQuery.data]
+      .sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      )
+      .map((msg) => ({
+        id: msg.id?.toString?.(),
+        role: msg.role as "user" | "assistant",
+        content: msg.content,
+        timestamp: new Date(msg.createdAt),
+      }));
+
+    if (serverMessages.length === 0) return;
+
+    setMessages((prev) => {
+      if (!hasLoadedHistory || prev.length === 0) {
+        return serverMessages;
       }
-    }
-  }, [historyQuery.data]);
+
+      const existingIds = new Set(prev.map((m) => m.id).filter(Boolean));
+      const merged = [...prev];
+
+      serverMessages.forEach((msg) => {
+        const isDuplicateId = msg.id && existingIds.has(msg.id);
+        const isDuplicateContent = merged.some(
+          (m) =>
+            !msg.id &&
+            m.role === msg.role &&
+            m.content === msg.content &&
+            (m.timestamp?.getTime?.() || 0) === (msg.timestamp?.getTime?.() || 0)
+        );
+
+        if (!isDuplicateId && !isDuplicateContent) {
+          merged.push(msg);
+        }
+      });
+
+      return merged.sort(
+        (a, b) => (a.timestamp?.getTime() || 0) - (b.timestamp?.getTime() || 0)
+      );
+    });
+
+    setHasLoadedHistory(true);
+  }, [hasLoadedHistory, historyQuery.data]);
 
   const handleReset = async () => {
     // Save conversation history

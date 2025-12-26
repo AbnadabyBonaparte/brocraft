@@ -1,30 +1,30 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useFilteredData } from "@/hooks/useFilteredData";
 import { trpc } from "@/lib/trpc";
-import { Loader2, Award, Lock } from "lucide-react";
+import { Loader2, Award, Lock, AlertCircle, RotateCcw } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Badges() {
   const { logout, isAuthenticated } = useAuth();
 
   const profileQuery = trpc.gamification.getProfile.useQuery(undefined, {
     enabled: isAuthenticated,
+    refetchInterval: 20000,
   });
 
   const userBadgesQuery = trpc.gamification.getBadges.useQuery(undefined, {
     enabled: isAuthenticated,
+    refetchInterval: 15000,
+    retry: 2,
   });
 
-  const allBadgesQuery = trpc.gamification.getAllBadgeDefinitions.useQuery();
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-950 to-gray-900">
-        <p className="text-gray-400">Por favor, faça login para ver seus badges.</p>
-      </div>
-    );
-  }
+  const allBadgesQuery = trpc.gamification.getAllBadgeDefinitions.useQuery(undefined, {
+    refetchInterval: 30000,
+    retry: 2,
+  });
 
   const earnedBadgeTypes = new Set(
     userBadgesQuery.data?.map((b) => b.type) || []
@@ -36,6 +36,24 @@ export default function Badges() {
     customFilter: (badge) => !earnedBadgeTypes.has(badge.type),
     dependencies: [earnedBadges.length],
   });
+
+  const isLoadingAny =
+    profileQuery.isLoading || userBadgesQuery.isLoading || allBadgesQuery.isLoading;
+  const isErrorAny = profileQuery.isError || userBadgesQuery.isError || allBadgesQuery.isError;
+
+  const handleRetry = () => {
+    profileQuery.refetch();
+    userBadgesQuery.refetch();
+    allBadgesQuery.refetch();
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-950 to-gray-900">
+        <p className="text-gray-400">Por favor, faça login para ver seus badges.</p>
+      </div>
+    );
+  }
 
   return (
     <DashboardLayout
@@ -57,42 +75,79 @@ export default function Badges() {
           </p>
         </div>
 
+        {isErrorAny && (
+          <Card className="bg-red-900/20 border-red-500/30 p-6 flex items-start gap-4">
+            <AlertCircle className="h-6 w-6 text-red-400" />
+            <div className="space-y-2">
+              <p className="text-red-200 font-semibold">Erro ao carregar seus dados de gamificação.</p>
+              <p className="text-red-100/80 text-sm">
+                Verifique sua conexão e tente novamente para ver seu progresso.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-red-400/50 text-red-100 hover:bg-red-500/10"
+                onClick={handleRetry}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Recarregar dados
+              </Button>
+            </div>
+          </Card>
+        )}
+
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="bg-gradient-to-br from-orange-600/20 to-red-600/20 border-orange-500/30 p-4">
             <p className="text-xs text-orange-300 uppercase font-bold mb-1">
               Badges Conquistados
             </p>
-            <p className="text-3xl font-black text-orange-400">
-              {earnedBadges.length}
-            </p>
+            {isLoadingAny ? (
+              <Skeleton className="h-10 w-20 bg-orange-500/30" />
+            ) : (
+              <p className="text-3xl font-black text-orange-400">
+                {earnedBadges.length}
+              </p>
+            )}
           </Card>
           <Card className="bg-gray-800/30 border-gray-700/50 p-4">
             <p className="text-xs text-gray-400 uppercase font-bold mb-1">
               Total Disponível
             </p>
-            <p className="text-3xl font-black text-gray-300">
-              {allBadges.length}
-            </p>
+            {isLoadingAny ? (
+              <Skeleton className="h-10 w-16 bg-gray-700" />
+            ) : (
+              <p className="text-3xl font-black text-gray-300">
+                {allBadges.length}
+              </p>
+            )}
           </Card>
           <Card className="bg-gray-800/30 border-gray-700/50 p-4">
             <p className="text-xs text-gray-400 uppercase font-bold mb-1">
               Progresso
             </p>
-            <p className="text-3xl font-black text-blue-400">
-              {allBadges.length > 0
-                ? Math.round((earnedBadges.length / allBadges.length) * 100)
-                : 0}
-              %
-            </p>
+            {isLoadingAny ? (
+              <Skeleton className="h-10 w-24 bg-blue-500/30" />
+            ) : (
+              <p className="text-3xl font-black text-blue-400">
+                {allBadges.length > 0
+                  ? Math.round((earnedBadges.length / allBadges.length) * 100)
+                  : 0}
+                %
+              </p>
+            )}
           </Card>
           <Card className="bg-gray-800/30 border-gray-700/50 p-4">
             <p className="text-xs text-gray-400 uppercase font-bold mb-1">
               Faltam
             </p>
-            <p className="text-3xl font-black text-purple-400">
-              {allBadges.length - earnedBadges.length}
-            </p>
+            {isLoadingAny ? (
+              <Skeleton className="h-10 w-16 bg-purple-500/30" />
+            ) : (
+              <p className="text-3xl font-black text-purple-400">
+                {Math.max(allBadges.length - earnedBadges.length, 0)}
+              </p>
+            )}
           </Card>
         </div>
 
@@ -106,6 +161,20 @@ export default function Badges() {
             <div className="flex justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
+          ) : userBadgesQuery.isError ? (
+            <Card className="bg-red-900/20 border-red-500/30 p-6 text-center">
+              <p className="text-red-200 font-semibold mb-2">Erro ao carregar badges conquistados.</p>
+              <p className="text-red-100/80 text-sm">Tente novamente em instantes.</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4 border-red-400/50 text-red-100 hover:bg-red-500/10"
+                onClick={handleRetry}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Recarregar
+              </Button>
+            </Card>
           ) : earnedBadges.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {earnedBadges.map((badge) => (
@@ -157,6 +226,12 @@ export default function Badges() {
                 <p className="text-muted-foreground text-sm mt-2">
                   Continue usando o BROCRAFT para desbloquear conquistas!
                 </p>
+                <Button
+                  className="mt-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+                  onClick={() => (window.location.href = "/recipes")}
+                >
+                  Explorar desafios
+                </Button>
               </Card>
             )}
         </div>
@@ -172,6 +247,20 @@ export default function Badges() {
             <div className="flex justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
+          ) : allBadgesQuery.isError ? (
+            <Card className="bg-red-900/20 border-red-500/30 p-6 text-center">
+              <p className="text-red-200 font-semibold mb-2">Erro ao carregar badges disponíveis.</p>
+              <p className="text-red-100/80 text-sm">Tente novamente em instantes.</p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-4 border-red-400/50 text-red-100 hover:bg-red-500/10"
+                onClick={handleRetry}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Recarregar
+              </Button>
+            </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {lockedBadges.map((badge) => (

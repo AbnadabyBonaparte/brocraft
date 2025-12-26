@@ -18,8 +18,10 @@ import {
   Flame,
   AlertCircle,
   ChevronDown,
+  RefreshCw,
+  RotateCcw,
 } from "lucide-react";
-import { COMMUNITY_CATEGORIES, LEADERBOARD_TIMEFRAMES } from "@shared/const";
+import { COMMUNITY_CATEGORIES } from "@shared/const";
 import type { LeaderboardTimeframe, CommunityCategory } from "@shared/const";
 
 // Timeframe labels para UI
@@ -74,23 +76,28 @@ export default function Community() {
   // Local posts state para update otimista
   const [localPosts, setLocalPosts] = useState<LocalPost[]>([]);
   const [hasLoadedInitial, setHasLoadedInitial] = useState(false);
+  const [isRefreshingFeed, setIsRefreshingFeed] = useState(false);
 
   // Queries
   const profileQuery = trpc.gamification.getProfile.useQuery(undefined, {
     enabled: isAuthenticated,
+    refetchInterval: 20000,
   });
 
   const postsQuery = trpc.community.getPosts.useQuery(
     { limit: 20 },
-    { 
+    {
       enabled: true,
       staleTime: 30000, // 30 segundos
+      refetchInterval: 15000,
+      refetchOnWindowFocus: true,
+      retry: 2,
     }
   );
 
   const leaderboardQuery = trpc.community.getLeaderboard.useQuery(
     { timeframe: selectedTimeframe },
-    { enabled: true }
+    { enabled: true, refetchInterval: 15000, retry: 2 }
   );
 
   // Mutations
@@ -104,17 +111,26 @@ export default function Community() {
 
   // Sincronizar posts do server com estado local
   useEffect(() => {
-    if (postsQuery.data && !hasLoadedInitial) {
-      setLocalPosts(postsQuery.data.items.map(p => ({
-        ...p,
-        hasVoted: p.hasVoted || false,
-        isVoting: false,
-      })));
+    if (postsQuery.data) {
       setHasMore(!!postsQuery.data.nextCursor);
       setCursor(postsQuery.data.nextCursor);
-      setHasLoadedInitial(true);
+      setLocalPosts((prev) =>
+        postsQuery.data?.items.map((p) => {
+          const existing = prev.find((post) => post.id === p.id);
+
+          return {
+            ...p,
+            hasVoted: existing?.hasVoted ?? p.hasVoted ?? false,
+            votes: p.votes ?? existing?.votes ?? 0,
+            isVoting: false,
+          };
+        }) || []
+      );
+      if (!hasLoadedInitial) {
+        setHasLoadedInitial(true);
+      }
     }
-  }, [postsQuery.data, hasLoadedInitial]);
+  }, [hasLoadedInitial, postsQuery.data]);
 
   // Carregar mais posts
   const loadMorePosts = useCallback(async () => {
@@ -122,7 +138,7 @@ export default function Community() {
     
     setIsLoadingMore(true);
     try {
-      const result = await postsQuery.refetch();
+      await postsQuery.refetch();
       // Note: Para paginação real, você precisaria usar useInfiniteQuery
       // Por simplicidade, estamos usando refetch aqui
     } catch (error) {
@@ -132,6 +148,18 @@ export default function Community() {
       setIsLoadingMore(false);
     }
   }, [cursor, isLoadingMore, hasMore, postsQuery]);
+
+  const refreshFeed = useCallback(async () => {
+    setIsRefreshingFeed(true);
+    try {
+      await postsQuery.refetch();
+    } catch (error) {
+      console.error("Error refreshing feed:", error);
+      toast.error("Erro ao atualizar feed");
+    } finally {
+      setIsRefreshingFeed(false);
+    }
+  }, [postsQuery]);
 
   // Handle create post
   const handleCreatePost = async () => {
@@ -392,10 +420,24 @@ export default function Community() {
 
             {/* Posts Feed */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                <Flame className="h-5 w-5 text-orange-400" />
-                Posts Recentes
-              </h3>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Flame className="h-5 w-5 text-orange-400" />
+                  Posts Recentes
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={refreshFeed}
+                  disabled={postsQuery.isFetching || isRefreshingFeed}
+                  className="text-gray-300 hover:text-white"
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 mr-2 ${postsQuery.isFetching ? "animate-spin" : ""}`}
+                  />
+                  Atualizar
+                </Button>
+              </div>
 
               {postsQuery.isLoading && !hasLoadedInitial ? (
                 <div className="flex items-center justify-center py-12">
@@ -419,14 +461,23 @@ export default function Community() {
                   </Button>
                 </Card>
               ) : localPosts.length === 0 ? (
-                <Card className="bg-gray-800/30 border-gray-700/50 p-8 text-center">
-                  <MessageSquare className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-400 text-lg mb-2">
+                <Card className="bg-gray-800/30 border-gray-700/50 p-8 text-center space-y-3">
+                  <MessageSquare className="h-12 w-12 text-gray-600 mx-auto" />
+                  <p className="text-gray-400 text-lg">
                     Ainda não tem nenhum post.
                   </p>
                   <p className="text-gray-500">
                     Seja o primeiro a compartilhar algo da sua brassagem! 🍺
                   </p>
+                  <Button
+                    className="mt-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+                    onClick={() => {
+                      setNewPostTitle("Minha primeira criação BROCRAFT");
+                      document.getElementById("post-title")?.focus();
+                    }}
+                  >
+                    Criar primeiro post
+                  </Button>
                 </Card>
               ) : (
                 <>
@@ -560,13 +611,31 @@ export default function Community() {
                   <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
                 </div>
               ) : leaderboardQuery.error ? (
-                <p className="text-gray-500 text-sm text-center py-4">
-                  Erro ao carregar leaderboard
-                </p>
+                <div className="text-center py-6 space-y-3">
+                  <AlertCircle className="h-8 w-8 text-red-400 mx-auto" />
+                  <p className="text-red-200 text-sm">Erro ao carregar leaderboard</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-red-400/50 text-red-100 hover:bg-red-500/10"
+                    onClick={() => leaderboardQuery.refetch()}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Tentar novamente
+                  </Button>
+                </div>
               ) : !leaderboardQuery.data?.length ? (
-                <p className="text-gray-500 text-sm text-center py-4">
-                  Nenhum post neste período
-                </p>
+                <div className="text-center py-6 space-y-2">
+                  <p className="text-gray-400 text-sm">Nenhum post neste período.</p>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-orange-400 hover:text-orange-300"
+                    onClick={() => leaderboardQuery.refetch()}
+                  >
+                    Atualizar ranking
+                  </Button>
+                </div>
               ) : (
                 <div className="space-y-3">
                   {leaderboardQuery.data.slice(0, 5).map((post, idx) => (
