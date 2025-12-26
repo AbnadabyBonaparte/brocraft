@@ -18,7 +18,8 @@ import {
   MessageSquare,
   ExternalLink,
 } from "lucide-react";
-import { UpgradeCTA } from "./PricingSection";
+import { UpgradeCTA } from "../common/PricingSection";
+import { ROUTES } from "@/shared/routes";
 
 // TODO: [BETA] Configure final feedback email/URL here
 const BETA_FEEDBACK_EMAIL = "feedback@brocraft.app";
@@ -34,12 +35,12 @@ interface DashboardLayoutProps {
 }
 
 const MENU_ITEMS = [
-  { icon: Home, label: "Home", href: "/" },
-  { icon: BookOpen, label: "Receitas", href: "/receitas" },
-  { icon: History, label: "Histórico", href: "/historico" },
-  { icon: Award, label: "Badges", href: "/badges" },
-  { icon: Users, label: "Comunidade", href: "/comunidade" },
-  { icon: Settings, label: "Configurações", href: "/settings", disabled: true },
+  { icon: Home, label: "Home", href: ROUTES.HOME },
+  { icon: BookOpen, label: "Receitas", href: ROUTES.RECIPES },
+  { icon: History, label: "Histórico", href: ROUTES.HISTORY },
+  { icon: Award, label: "Badges", href: ROUTES.BADGES },
+  { icon: Users, label: "Comunidade", href: ROUTES.COMMUNITY },
+  { icon: Settings, label: "Configurações", href: ROUTES.SETTINGS, disabled: true },
 ];
 
 export function DashboardLayout({

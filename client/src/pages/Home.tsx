@@ -1,13 +1,14 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { ChatBox } from "@/components/common/ChatBox";
+import { FeaturesSection } from "@/components/common/FeaturesSection";
+import { HeroSection } from "@/components/common/HeroSection";
+import { OnboardingCard } from "@/components/common/OnboardingCard";
+import { PricingSection } from "@/components/common/PricingSection";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ChatBox } from "@/components/ChatBox";
-import { DashboardLayout } from "@/components/DashboardLayout";
-import { HeroSection } from "@/components/HeroSection";
-import { FeaturesSection } from "@/components/FeaturesSection";
-import { PricingSection } from "@/components/PricingSection";
-import { OnboardingCard } from "@/components/OnboardingCard";
 import { trpc } from "@/lib/trpc";
+import { ROUTES } from "@/shared/routes";
 import { Loader2, Flame, BookOpen, Users, Award, ArrowRight, RotateCcw } from "lucide-react";
 import { useState } from "react";
 
@@ -60,8 +61,8 @@ export default function Home() {
               <div>
                 <h4 className="text-sm font-bold text-white uppercase mb-4">Legal</h4>
                 <ul className="space-y-2 text-sm text-gray-400">
-                  <li><a href="/docs/terms" className="hover:text-orange-400">Termos de Uso</a></li>
-                  <li><a href="/docs/privacy" className="hover:text-orange-400">Privacidade</a></li>
+                  <li><a href={ROUTES.TERMS} className="hover:text-orange-400">Termos de Uso</a></li>
+                  <li><a href={ROUTES.PRIVACY} className="hover:text-orange-400">Privacidade</a></li>
                 </ul>
               </div>
               <div>
@@ -136,21 +137,21 @@ export default function Home() {
                 <h3 className="text-lg font-bold text-white">Explorar</h3>
               </div>
               <div className="p-6 space-y-3">
-                <a href="/receitas">
+                <a href={ROUTES.RECIPES}>
                   <Button className="w-full justify-start bg-gradient-to-r from-orange-600/20 to-red-600/20 hover:from-orange-600/30 hover:to-red-600/30 text-orange-300 border border-orange-500/30 py-6 font-semibold rounded-lg">
                     <BookOpen className="h-5 w-5 mr-3" />
                     Receitas
                     <ArrowRight className="h-4 w-4 ml-auto text-orange-400" />
                   </Button>
                 </a>
-                <a href="/comunidade">
+                <a href={ROUTES.COMMUNITY}>
                   <Button className="w-full justify-start bg-gradient-to-r from-blue-600/20 to-purple-600/20 hover:from-blue-600/30 hover:to-purple-600/30 text-blue-300 border border-blue-500/30 py-6 font-semibold rounded-lg">
                     <Users className="h-5 w-5 mr-3" />
                     Comunidade
                     <ArrowRight className="h-4 w-4 ml-auto text-blue-400" />
                   </Button>
                 </a>
-                <a href="/badges">
+                <a href={ROUTES.BADGES}>
                   <Button className="w-full justify-start bg-gradient-to-r from-purple-600/20 to-pink-600/20 hover:from-purple-600/30 hover:to-pink-600/30 text-purple-300 border border-purple-500/30 py-6 font-semibold rounded-lg">
                     <Award className="h-5 w-5 mr-3" />
                     Badges

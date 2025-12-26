@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
-import ErrorBoundary from "./components/ErrorBoundary";
+import ErrorBoundary from "./components/common/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Recipes from "./pages/Recipes";
@@ -13,21 +13,22 @@ import UpgradeSuccess from "./pages/UpgradeSuccess";
 import UpgradeCancel from "./pages/UpgradeCancel";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import { ROUTES } from "./shared/routes";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/receitas" component={Recipes} />
-      <Route path="/historico" component={ConversationHistory} />
-      <Route path="/badges" component={Badges} />
-      <Route path="/comunidade" component={Community} />
-      <Route path="/upgrade/sucesso" component={UpgradeSuccess} />
-      <Route path="/upgrade/cancelado" component={UpgradeCancel} />
-      <Route path="/docs/terms" component={Terms} />
-      <Route path="/docs/privacy" component={Privacy} />
-      <Route path="/404" component={NotFound} />
+      <Route path={ROUTES.HOME} component={Home} />
+      <Route path={ROUTES.RECIPES} component={Recipes} />
+      <Route path={ROUTES.HISTORY} component={ConversationHistory} />
+      <Route path={ROUTES.BADGES} component={Badges} />
+      <Route path={ROUTES.COMMUNITY} component={Community} />
+      <Route path={ROUTES.UPGRADE_SUCCESS} component={UpgradeSuccess} />
+      <Route path={ROUTES.UPGRADE_CANCEL} component={UpgradeCancel} />
+      <Route path={ROUTES.TERMS} component={Terms} />
+      <Route path={ROUTES.PRIVACY} component={Privacy} />
+      <Route path={ROUTES.NOT_FOUND} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
     </Switch>

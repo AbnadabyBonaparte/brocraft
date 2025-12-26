@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, LogOut } from "lucide-react";
 import { useLocation } from "wouter";
+import { ROUTES } from "@/shared/routes";
 
 interface HeaderProps {
   title: string;
@@ -30,7 +31,7 @@ export function Header({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate("/")}
+                onClick={() => navigate(ROUTES.HOME)}
                 className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
               >
                 <ArrowLeft className="h-5 w-5" />
