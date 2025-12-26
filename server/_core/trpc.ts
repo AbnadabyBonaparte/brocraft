@@ -17,10 +17,15 @@ const requireUser = t.middleware(async opts => {
     throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
   }
 
+  if (!ctx.orgId) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "User must belong to an organization" });
+  }
+
   return next({
     ctx: {
       ...ctx,
       user: ctx.user,
+      orgId: ctx.orgId,
     },
   });
 });

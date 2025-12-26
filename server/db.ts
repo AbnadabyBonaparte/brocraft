@@ -18,12 +18,35 @@
 
 import { eq, and, desc, gte, lt, sql, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, messages, recipes, userRecipes, badges, communityPosts, votes, products, cartItems, orders, conversationHistory, InsertConversationHistory, purchases } from "../drizzle/schema";
+import { InsertUser, users, messages, recipes, userRecipes, badges, communityPosts, votes, products, cartItems, orders, conversationHistory, InsertConversationHistory, purchases, organizations } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import type { LeaderboardTimeframe, CommunityCategory, VoteType } from "@shared/const";
 import type { TierType } from "./_core/stripe";
+import { ForbiddenError } from "@shared/_core/errors";
 
 let _db: ReturnType<typeof drizzle> | null = null;
+
+/**
+ * Helper to ensure a user belongs to the specified organization.
+ * Throws ForbiddenError if user's orgId doesn't match.
+ */
+export async function ensureOrgOwnership(userId: number, orgId: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const user = await db.select({ orgId: users.orgId })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  
+  if (!user.length) {
+    throw new Error("User not found");
+  }
+  
+  if (user[0].orgId !== orgId) {
+    throw ForbiddenError("User does not belong to this organization");
+  }
+}
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
@@ -42,6 +65,10 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) {
     throw new Error("User openId is required for upsert");
   }
+  
+  if (!user.orgId) {
+    throw new Error("User orgId is required for upsert");
+  }
 
   const db = await getDb();
   if (!db) {
@@ -52,6 +79,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   try {
     const values: InsertUser = {
       openId: user.openId,
+      orgId: user.orgId,
     };
     const updateSet: Record<string, unknown> = {};
 
@@ -109,15 +137,64 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// ===== BROCRAFT SPECIFIC QUERIES =====
+export async function getUserById(userId: number) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get user: database not available");
+    return undefined;
+  }
 
-// Messages
-export async function saveMessage(userId: number, role: string, content: string, xpGained: number = 0) {
+  const result = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+
+  return result.length > 0 ? result[0] : undefined;
+}
+
+/**
+ * Get or create default organization for seeding/migration purposes.
+ * Returns the default organization ID.
+ */
+export async function getDefaultOrgId(): Promise<string> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  // Fixed UUID for default org (matches migration and seed)
+  const DEFAULT_ORG_ID = "00000000-0000-0000-0000-000000000001";
+  
+  const defaultOrg = await db.select()
+    .from(organizations)
+    .where(eq(organizations.id, DEFAULT_ORG_ID))
+    .limit(1);
+  
+  if (defaultOrg.length > 0) {
+    return defaultOrg[0].id;
+  }
+  
+  // If not found, try by slug
+  const defaultOrgBySlug = await db.select()
+    .from(organizations)
+    .where(eq(organizations.slug, "brocraft-community"))
+    .limit(1);
+  
+  if (defaultOrgBySlug.length > 0) {
+    return defaultOrgBySlug[0].id;
+  }
+  
+  // If still not found, this should be created by seed script
+  throw new Error("Default organization not found. Run seed script first.");
+}
+
+// ===== BROCRAFT SPECIFIC QUERIES =====
+
+// Messages
+export async function saveMessage(userId: number, orgId: string, role: string, content: string, xpGained: number = 0) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await ensureOrgOwnership(userId, orgId);
+  
   const result = await db.insert(messages).values({
     userId,
+    orgId,
     role,
     content,
     xpGained,
@@ -125,24 +202,28 @@ export async function saveMessage(userId: number, role: string, content: string,
   return result;
 }
 
-export async function getUserMessages(userId: number, limit: number = 50, offset: number = 0) {
+export async function getUserMessages(userId: number, orgId: string, limit: number = 50, offset: number = 0) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  await ensureOrgOwnership(userId, orgId);
+  
   return db.select()
     .from(messages)
-    .where(eq(messages.userId, userId))
+    .where(and(eq(messages.userId, userId), eq(messages.orgId, orgId)))
     .orderBy(desc(messages.createdAt))
     .limit(limit)
     .offset(offset);
 }
 
 // Gamification
-export async function addXP(userId: number, amount: number) {
+export async function addXP(userId: number, orgId: string, amount: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  await ensureOrgOwnership(userId, orgId);
+  
+  const user = await db.select().from(users).where(and(eq(users.id, userId), eq(users.orgId, orgId))).limit(1);
   if (!user.length) throw new Error("User not found");
   
   const oldRank = user[0].rank;
@@ -152,11 +233,11 @@ export async function addXP(userId: number, amount: number) {
   
   await db.update(users)
     .set({ xp: newXP, rank: newRank })
-    .where(eq(users.id, userId));
+    .where(and(eq(users.id, userId), eq(users.orgId, orgId)));
   
   // [BROCRAFT][EVENT] Telemetria de rank up
   if (rankUp) {
-    console.log(`[BROCRAFT][EVENT] type="rank_up" userId=${userId} oldRank="${oldRank}" newRank="${newRank}" totalXP=${newXP}`);
+    console.log(`[BROCRAFT][EVENT] type="rank_up" userId=${userId} orgId=${orgId} oldRank="${oldRank}" newRank="${newRank}" totalXP=${newXP}`);
   }
   
   return { newXP, newRank, rankUp };
@@ -170,17 +251,19 @@ function calculateRank(xp: number) {
   return "NOVATO";
 }
 
-export async function getUserProfile(userId: number) {
+export async function getUserProfile(userId: number, orgId: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  await ensureOrgOwnership(userId, orgId);
+  
+  const user = await db.select().from(users).where(and(eq(users.id, userId), eq(users.orgId, orgId))).limit(1);
   if (!user.length) throw new Error("User not found");
   
-  const userBadges = await db.select().from(badges).where(eq(badges.userId, userId));
+  const userBadges = await db.select().from(badges).where(and(eq(badges.userId, userId), eq(badges.orgId, orgId)));
   
   // Atualiza e calcula streak baseado na atividade
-  const updatedStreak = await updateAndGetStreak(userId);
+  const updatedStreak = await updateAndGetStreak(userId, orgId);
   
   return {
     ...user[0],
@@ -203,7 +286,7 @@ function getStartOfYesterday(): Date {
   return yesterday;
 }
 
-async function hasActivityOnDate(userId: number, date: Date): Promise<boolean> {
+async function hasActivityOnDate(userId: number, orgId: string, date: Date): Promise<boolean> {
   const db = await getDb();
   if (!db) return false;
   
@@ -216,6 +299,7 @@ async function hasActivityOnDate(userId: number, date: Date): Promise<boolean> {
     .from(messages)
     .where(and(
       eq(messages.userId, userId),
+      eq(messages.orgId, orgId),
       gte(messages.createdAt, startOfDay),
       sql`${messages.createdAt} < ${endOfDay}`
     ))
@@ -228,6 +312,7 @@ async function hasActivityOnDate(userId: number, date: Date): Promise<boolean> {
     .from(userRecipes)
     .where(and(
       eq(userRecipes.userId, userId),
+      eq(userRecipes.orgId, orgId),
       eq(userRecipes.status, "COMPLETED"),
       gte(userRecipes.completedAt, startOfDay),
       sql`${userRecipes.completedAt} < ${endOfDay}`
@@ -246,11 +331,13 @@ async function hasActivityOnDate(userId: number, date: Date): Promise<boolean> {
  * Prioridade: BAIXA para beta, ALTA para produção global.
  * Solução: Adicionar campo timezone no user ou usar UTC consistente.
  */
-export async function updateAndGetStreak(userId: number): Promise<number> {
+export async function updateAndGetStreak(userId: number, orgId: string): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
   
-  const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  await ensureOrgOwnership(userId, orgId);
+  
+  const user = await db.select().from(users).where(and(eq(users.id, userId), eq(users.orgId, orgId))).limit(1);
   if (!user.length) return 0;
   
   const currentStreak = user[0].streak;
@@ -259,7 +346,7 @@ export async function updateAndGetStreak(userId: number): Promise<number> {
   const yesterday = getStartOfYesterday();
   
   // Verifica se já teve atividade hoje
-  const hadActivityToday = await hasActivityOnDate(userId, new Date());
+  const hadActivityToday = await hasActivityOnDate(userId, orgId, new Date());
   
   // Se já teve atividade hoje, verifica se precisa incrementar o streak
   if (hadActivityToday) {
@@ -269,7 +356,7 @@ export async function updateAndGetStreak(userId: number): Promise<number> {
     if (lastSignedInDay.getTime() < today.getTime()) {
       // É um novo dia com atividade
       // Verifica se teve atividade ontem para continuar o streak
-      const hadActivityYesterday = await hasActivityOnDate(userId, yesterday);
+      const hadActivityYesterday = await hasActivityOnDate(userId, orgId, yesterday);
       
       let newStreak: number;
       if (hadActivityYesterday || lastSignedInDay.getTime() === yesterday.getTime()) {
@@ -283,7 +370,7 @@ export async function updateAndGetStreak(userId: number): Promise<number> {
       // Atualiza o streak e lastSignedIn
       await db.update(users)
         .set({ streak: newStreak, lastSignedIn: new Date() })
-        .where(eq(users.id, userId));
+        .where(and(eq(users.id, userId), eq(users.orgId, orgId)));
       
       return newStreak;
     }
@@ -302,7 +389,7 @@ export async function updateAndGetStreak(userId: number): Promise<number> {
     if (currentStreak > 0) {
       await db.update(users)
         .set({ streak: 0 })
-        .where(eq(users.id, userId));
+        .where(and(eq(users.id, userId), eq(users.orgId, orgId)));
     }
     return 0;
   }
@@ -312,52 +399,53 @@ export async function updateAndGetStreak(userId: number): Promise<number> {
 }
 
 // Recipes
-export async function getRecipes(category?: string, difficulty?: string, limit: number = 50) {
+export async function getRecipes(orgId: string, category?: string, difficulty?: string, limit: number = 50) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const conditions = [];
+  const conditions = [eq(recipes.orgId, orgId)];
   
   if (category) conditions.push(eq(recipes.category, category as any));
   if (difficulty) conditions.push(eq(recipes.difficulty, difficulty as any));
   
-  if (conditions.length > 0) {
-    return db.select().from(recipes).where(and(...conditions)).limit(limit);
-  }
-  
-  return db.select().from(recipes).limit(limit);
+  return db.select().from(recipes).where(and(...conditions)).limit(limit);
 }
 
-export async function getRecipeById(id: number) {
+export async function getRecipeById(id: number, orgId: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.select().from(recipes).where(eq(recipes.id, id)).limit(1);
+  const result = await db.select().from(recipes).where(and(eq(recipes.id, id), eq(recipes.orgId, orgId))).limit(1);
   return result.length > 0 ? result[0] : null;
 }
 
-export async function getUserRecipes(userId: number, status?: string) {
+export async function getUserRecipes(userId: number, orgId: string, status?: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  await ensureOrgOwnership(userId, orgId);
+  
+  const conditions = [eq(userRecipes.userId, userId), eq(userRecipes.orgId, orgId)];
   if (status) {
-    return db.select().from(userRecipes).where(and(eq(userRecipes.userId, userId), eq(userRecipes.status, status as any)));
+    conditions.push(eq(userRecipes.status, status as any));
   }
   
-  return db.select().from(userRecipes).where(eq(userRecipes.userId, userId));
+  return db.select().from(userRecipes).where(and(...conditions));
 }
 
-export async function startRecipe(userId: number, recipeId: number) {
+export async function startRecipe(userId: number, orgId: string, recipeId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const recipe = await getRecipeById(recipeId);
+  await ensureOrgOwnership(userId, orgId);
+  
+  const recipe = await getRecipeById(recipeId, orgId);
   if (!recipe) throw new Error("Recipe not found");
   
   // Check if already started
   const existing = await db.select()
     .from(userRecipes)
-    .where(and(eq(userRecipes.userId, userId), eq(userRecipes.recipeId, recipeId)))
+    .where(and(eq(userRecipes.userId, userId), eq(userRecipes.orgId, orgId), eq(userRecipes.recipeId, recipeId)))
     .limit(1);
   
   if (existing.length) {
@@ -366,29 +454,32 @@ export async function startRecipe(userId: number, recipeId: number) {
   
   await db.insert(userRecipes).values({
     userId,
+    orgId,
     recipeId,
     status: "STARTED",
   });
   
   // Award XP
   const xpReward = Math.floor(recipe.xp * 0.5); // 50% of recipe XP for starting
-  await addXP(userId, xpReward);
+  await addXP(userId, orgId, xpReward);
   
   return { success: true, xpGained: xpReward };
 }
 
-export async function completeRecipe(userId: number, userRecipeId: number, rating: number, photo?: string) {
+export async function completeRecipe(userId: number, orgId: string, userRecipeId: number, rating: number, photo?: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  await ensureOrgOwnership(userId, orgId);
+  
   const userRecipe = await db.select()
     .from(userRecipes)
-    .where(eq(userRecipes.id, userRecipeId))
+    .where(and(eq(userRecipes.id, userRecipeId), eq(userRecipes.orgId, orgId)))
     .limit(1);
   
   if (!userRecipe.length) throw new Error("User recipe not found");
   
-  const recipe = await getRecipeById(userRecipe[0].recipeId);
+  const recipe = await getRecipeById(userRecipe[0].recipeId, orgId);
   if (!recipe) throw new Error("Recipe not found");
   
   // Update user recipe
@@ -399,27 +490,29 @@ export async function completeRecipe(userId: number, userRecipeId: number, ratin
       photo,
       completedAt: new Date(),
     })
-    .where(eq(userRecipes.id, userRecipeId));
+    .where(and(eq(userRecipes.id, userRecipeId), eq(userRecipes.orgId, orgId)));
   
   // Award full XP
   const xpReward = recipe.xp;
-  await addXP(userId, xpReward);
+  await addXP(userId, orgId, xpReward);
   
   // [BROCRAFT][EVENT] Telemetria de receita completada
-  console.log(`[BROCRAFT][EVENT] type="recipe_completed" userId=${userId} recipeId=${recipe.id} difficulty="${recipe.difficulty}" category="${recipe.category}" xpAwarded=${xpReward}`);
+  console.log(`[BROCRAFT][EVENT] type="recipe_completed" userId=${userId} orgId=${orgId} recipeId=${recipe.id} difficulty="${recipe.difficulty}" category="${recipe.category}" xpAwarded=${xpReward}`);
   
   return { success: true, xpGained: xpReward };
 }
 
 // Badges
-export async function awardBadge(userId: number, type: string, name: string, description: string, icon: string, color: string) {
+export async function awardBadge(userId: number, orgId: string, type: string, name: string, description: string, icon: string, color: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  
+  await ensureOrgOwnership(userId, orgId);
   
   // Check if already has badge
   const existing = await db.select()
     .from(badges)
-    .where(and(eq(badges.userId, userId), eq(badges.type, type)))
+    .where(and(eq(badges.userId, userId), eq(badges.orgId, orgId), eq(badges.type, type)))
     .limit(1);
   
   if (existing.length) {
@@ -428,6 +521,7 @@ export async function awardBadge(userId: number, type: string, name: string, des
   
   await db.insert(badges).values({
     userId,
+    orgId,
     type,
     name,
     description,
@@ -438,11 +532,13 @@ export async function awardBadge(userId: number, type: string, name: string, des
   return { success: true };
 }
 
-export async function getUserBadges(userId: number) {
+export async function getUserBadges(userId: number, orgId: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  return db.select().from(badges).where(eq(badges.userId, userId));
+  await ensureOrgOwnership(userId, orgId);
+  
+  return db.select().from(badges).where(and(eq(badges.userId, userId), eq(badges.orgId, orgId)));
 }
 
 // Badge Definitions (catálogo de badges disponíveis)
@@ -529,15 +625,17 @@ export type AwardedBadge = {
   color: string;
 };
 
-export async function checkAndAwardBadges(userId: number): Promise<{ newlyAwarded: AwardedBadge[] }> {
+export async function checkAndAwardBadges(userId: number, orgId: string): Promise<{ newlyAwarded: AwardedBadge[] }> {
   const db = await getDb();
   if (!db) {
     return { newlyAwarded: [] };
   }
   
+  await ensureOrgOwnership(userId, orgId);
+  
   try {
     // 1. Buscar dados do usuário
-    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    const user = await db.select().from(users).where(and(eq(users.id, userId), eq(users.orgId, orgId))).limit(1);
     if (!user.length) {
       return { newlyAwarded: [] };
     }
@@ -545,7 +643,7 @@ export async function checkAndAwardBadges(userId: number): Promise<{ newlyAwarde
     // 2. Contar mensagens
     const messageCountResult = await db.select({ count: sql<number>`COUNT(*)` })
       .from(messages)
-      .where(eq(messages.userId, userId));
+      .where(and(eq(messages.userId, userId), eq(messages.orgId, orgId)));
     const totalMessages = Number(messageCountResult[0]?.count || 0);
     
     // 3. Contar receitas completadas
@@ -553,6 +651,7 @@ export async function checkAndAwardBadges(userId: number): Promise<{ newlyAwarde
       .from(userRecipes)
       .where(and(
         eq(userRecipes.userId, userId),
+        eq(userRecipes.orgId, orgId),
         eq(userRecipes.status, "COMPLETED")
       ));
     const completedRecipes = Number(recipeCountResult[0]?.count || 0);
@@ -569,7 +668,7 @@ export async function checkAndAwardBadges(userId: number): Promise<{ newlyAwarde
     // 5. Buscar badges que o usuário já tem
     const existingBadges = await db.select({ type: badges.type })
       .from(badges)
-      .where(eq(badges.userId, userId));
+      .where(and(eq(badges.userId, userId), eq(badges.orgId, orgId)));
     const existingTypes = new Set(existingBadges.map(b => b.type));
     
     // 6. Verificar quais badges novos o usuário merece
@@ -584,6 +683,7 @@ export async function checkAndAwardBadges(userId: number): Promise<{ newlyAwarde
         // Concede o badge
         await db.insert(badges).values({
           userId,
+          orgId,
           type: badge.type,
           name: badge.name,
           description: badge.description || "",
@@ -621,6 +721,7 @@ export function getAllBadgeDefinitions() {
 
 // Community Posts - Com paginação cursor-based e hasVoted
 export async function getCommunityPosts(
+  orgId: string,
   category?: CommunityCategory,
   limit: number = 20,
   cursor?: number, // ID do último post (para paginação)
@@ -630,7 +731,7 @@ export async function getCommunityPosts(
   if (!db) throw new Error("Database not available");
   
   // Construir condições
-  const conditions: any[] = [];
+  const conditions: any[] = [eq(communityPosts.orgId, orgId)];
   if (category) conditions.push(eq(communityPosts.category, category as any));
   if (cursor) conditions.push(lt(communityPosts.id, cursor)); // Posts anteriores ao cursor
   
@@ -650,7 +751,7 @@ export async function getCommunityPosts(
   })
     .from(communityPosts)
     .leftJoin(users, eq(communityPosts.userId, users.id))
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(desc(communityPosts.id))
     .limit(limit + 1);
   
@@ -667,6 +768,7 @@ export async function getCommunityPosts(
       .from(votes)
       .where(and(
         eq(votes.userId, currentUserId),
+        eq(votes.orgId, orgId),
         inArray(votes.postId, postIds)
       ));
     userVotedPostIds = new Set(userVotes.map(v => v.postId));
@@ -682,16 +784,19 @@ export async function getCommunityPosts(
   };
 }
 
-export async function createCommunityPost(userId: number, data: any) {
+export async function createCommunityPost(userId: number, orgId: string, data: any) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  await ensureOrgOwnership(userId, orgId);
+  
   // Buscar nome do autor
-  const user = await db.select({ name: users.name }).from(users).where(eq(users.id, userId)).limit(1);
+  const user = await db.select({ name: users.name }).from(users).where(and(eq(users.id, userId), eq(users.orgId, orgId))).limit(1);
   const authorName = user[0]?.name || "Bro Anônimo";
   
   await db.insert(communityPosts).values({
     userId,
+    orgId,
     title: data.title,
     description: data.description,
     imageUrl: data.imageUrl,
@@ -705,12 +810,12 @@ export async function createCommunityPost(userId: number, data: any) {
   // Buscar o post recém-criado
   const newPost = await db.select()
     .from(communityPosts)
-    .where(eq(communityPosts.userId, userId))
+    .where(and(eq(communityPosts.userId, userId), eq(communityPosts.orgId, orgId)))
     .orderBy(desc(communityPosts.createdAt))
     .limit(1);
   
   // [BROCRAFT][EVENT] Telemetria de post criado
-  console.log(`[BROCRAFT][EVENT] type="post_created" userId=${userId} postId=${newPost[0]?.id} category="${data.category}"`);
+  console.log(`[BROCRAFT][EVENT] type="post_created" userId=${userId} orgId=${orgId} postId=${newPost[0]?.id} category="${data.category}"`);
   
   return {
     success: true,
@@ -724,14 +829,16 @@ export async function createCommunityPost(userId: number, data: any) {
 /**
  * Toggle de voto: se não votou, vota; se já votou, remove o voto.
  */
-export async function toggleVotePost(userId: number, postId: number, voteType: VoteType) {
+export async function toggleVotePost(userId: number, orgId: string, postId: number, voteType: VoteType) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  // Verificar se post existe
+  await ensureOrgOwnership(userId, orgId);
+  
+  // Verificar se post existe e pertence à mesma org
   const post = await db.select()
     .from(communityPosts)
-    .where(eq(communityPosts.id, postId))
+    .where(and(eq(communityPosts.id, postId), eq(communityPosts.orgId, orgId)))
     .limit(1);
   
   if (!post.length) {
@@ -741,7 +848,7 @@ export async function toggleVotePost(userId: number, postId: number, voteType: V
   // Verificar se já votou
   const existing = await db.select()
     .from(votes)
-    .where(and(eq(votes.userId, userId), eq(votes.postId, postId)))
+    .where(and(eq(votes.userId, userId), eq(votes.orgId, orgId), eq(votes.postId, postId)))
     .limit(1);
   
   let newVoteCount = post[0].votes;
@@ -750,7 +857,7 @@ export async function toggleVotePost(userId: number, postId: number, voteType: V
   if (existing.length) {
     // Já votou → remover voto (toggle off)
     await db.delete(votes)
-      .where(and(eq(votes.userId, userId), eq(votes.postId, postId)));
+      .where(and(eq(votes.userId, userId), eq(votes.orgId, orgId), eq(votes.postId, postId)));
     
     newVoteCount = Math.max(0, post[0].votes - 1);
     hasVoted = false;
@@ -758,6 +865,7 @@ export async function toggleVotePost(userId: number, postId: number, voteType: V
     // Não votou → adicionar voto (toggle on)
     await db.insert(votes).values({
       userId,
+      orgId,
       postId,
       voteType: voteType as any,
     });
@@ -769,7 +877,7 @@ export async function toggleVotePost(userId: number, postId: number, voteType: V
   // Atualizar contagem no post
   await db.update(communityPosts)
     .set({ votes: newVoteCount })
-    .where(eq(communityPosts.id, postId));
+    .where(and(eq(communityPosts.id, postId), eq(communityPosts.orgId, orgId)));
   
   return { 
     success: true, 
@@ -780,11 +888,11 @@ export async function toggleVotePost(userId: number, postId: number, voteType: V
 }
 
 // Legacy: mantido para compatibilidade (redirecionado para toggle)
-export async function votePost(userId: number, postId: number, voteType: string) {
-  return toggleVotePost(userId, postId, voteType as VoteType);
+export async function votePost(userId: number, orgId: string, postId: number, voteType: string) {
+  return toggleVotePost(userId, orgId, postId, voteType as VoteType);
 }
 
-export async function getLeaderboard(category?: CommunityCategory, timeframe: LeaderboardTimeframe = "ALL") {
+export async function getLeaderboard(orgId: string, category?: CommunityCategory, timeframe: LeaderboardTimeframe = "ALL") {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
@@ -809,7 +917,7 @@ export async function getLeaderboard(category?: CommunityCategory, timeframe: Le
   }
   
   // Construir condições
-  const conditions: any[] = [];
+  const conditions: any[] = [eq(communityPosts.orgId, orgId)];
   if (category) conditions.push(eq(communityPosts.category, category as any));
   if (fromDate) conditions.push(gte(communityPosts.createdAt, fromDate));
   
@@ -825,7 +933,7 @@ export async function getLeaderboard(category?: CommunityCategory, timeframe: Le
   })
     .from(communityPosts)
     .leftJoin(users, eq(communityPosts.userId, users.id))
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(desc(communityPosts.votes))
     .limit(10);
   
@@ -836,38 +944,45 @@ export async function getLeaderboard(category?: CommunityCategory, timeframe: Le
 }
 
 // Marketplace
-export async function getProducts(category?: string, limit: number = 20, offset: number = 0) {
+export async function getProducts(orgId: string, category?: string, limit: number = 20, offset: number = 0) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  const conditions = [eq(products.orgId, orgId)];
   if (category) {
-    return db.select().from(products)
-      .where(eq(products.category, category as any))
-      .limit(limit)
-      .offset(offset);
+    conditions.push(eq(products.category, category as any));
   }
   
   return db.select().from(products)
+    .where(and(...conditions))
     .limit(limit)
     .offset(offset);
 }
 
-export async function getCart(userId: number) {
+export async function getCart(userId: number, orgId: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  await ensureOrgOwnership(userId, orgId);
+  
   return db.select().from(cartItems)
-    .where(eq(cartItems.userId, userId));
+    .where(and(eq(cartItems.userId, userId), eq(cartItems.orgId, orgId)));
 }
 
-export async function addToCart(userId: number, productId: number, quantity: number) {
+export async function addToCart(userId: number, orgId: string, productId: number, quantity: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  
+  await ensureOrgOwnership(userId, orgId);
+  
+  // Verify product belongs to same org
+  const product = await db.select().from(products).where(and(eq(products.id, productId), eq(products.orgId, orgId))).limit(1);
+  if (!product.length) throw new Error("Product not found");
   
   // Check if already in cart
   const existing = await db.select()
     .from(cartItems)
-    .where(and(eq(cartItems.userId, userId), eq(cartItems.productId, productId)))
+    .where(and(eq(cartItems.userId, userId), eq(cartItems.orgId, orgId), eq(cartItems.productId, productId)))
     .limit(1);
   
   if (existing.length) {
@@ -881,6 +996,7 @@ export async function addToCart(userId: number, productId: number, quantity: num
   // Add new item
   await db.insert(cartItems).values({
     userId,
+    orgId,
     productId,
     quantity,
   });
@@ -888,14 +1004,16 @@ export async function addToCart(userId: number, productId: number, quantity: num
   return { success: true };
 }
 
-export async function removeFromCart(userId: number, cartItemId: number) {
+export async function removeFromCart(userId: number, orgId: string, cartItemId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  
+  await ensureOrgOwnership(userId, orgId);
   
   // Verify ownership
   const item = await db.select()
     .from(cartItems)
-    .where(eq(cartItems.id, cartItemId))
+    .where(and(eq(cartItems.id, cartItemId), eq(cartItems.orgId, orgId)))
     .limit(1);
   
   // Se o item não existe, retorna sucesso (idempotente)
@@ -909,17 +1027,19 @@ export async function removeFromCart(userId: number, cartItemId: number) {
   }
   
   // Delete real do item do carrinho
-  await db.delete(cartItems).where(eq(cartItems.id, cartItemId));
+  await db.delete(cartItems).where(and(eq(cartItems.id, cartItemId), eq(cartItems.orgId, orgId)));
   
   return { success: true };
 }
 
-export async function createOrder(userId: number) {
+export async function createOrder(userId: number, orgId: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  await ensureOrgOwnership(userId, orgId);
+  
   // Get cart items
-  const cartItemsList = await getCart(userId);
+  const cartItemsList = await getCart(userId, orgId);
   if (!cartItemsList.length) {
     return { success: false, message: "Cart is empty" };
   }
@@ -929,7 +1049,7 @@ export async function createOrder(userId: number) {
   const orderItems = [];
   
   for (const item of cartItemsList) {
-    const product = await db.select().from(products).where(eq(products.id, item.productId)).limit(1);
+    const product = await db.select().from(products).where(and(eq(products.id, item.productId), eq(products.orgId, orgId))).limit(1);
     if (product.length) {
       total += product[0].price * item.quantity;
       orderItems.push({
@@ -943,6 +1063,7 @@ export async function createOrder(userId: number) {
   // Create order
   await db.insert(orders).values({
     userId,
+    orgId,
     total,
     status: "PENDING",
     items: JSON.stringify(orderItems),
@@ -955,6 +1076,7 @@ export async function createOrder(userId: number) {
 // Conversation History
 export async function saveConversationHistory(
   userId: number,
+  orgId: string,
   title: string,
   messages: Array<{ role: string; content: string; timestamp: Date }>,
   xpGained: number
@@ -962,8 +1084,11 @@ export async function saveConversationHistory(
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  await ensureOrgOwnership(userId, orgId);
+  
   await db.insert(conversationHistory).values({
     userId,
+    orgId,
     title,
     messages: JSON.stringify(messages),
     messageCount: messages.length,
@@ -973,13 +1098,15 @@ export async function saveConversationHistory(
   return { success: true };
 }
 
-export async function getConversationHistory(userId: number, limit: number = 20, offset: number = 0) {
+export async function getConversationHistory(userId: number, orgId: string, limit: number = 20, offset: number = 0) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  await ensureOrgOwnership(userId, orgId);
+  
   const results = await db.select()
     .from(conversationHistory)
-    .where(eq(conversationHistory.userId, userId))
+    .where(and(eq(conversationHistory.userId, userId), eq(conversationHistory.orgId, orgId)))
     .orderBy(desc(conversationHistory.createdAt))
     .limit(limit)
     .offset(offset);
@@ -990,13 +1117,15 @@ export async function getConversationHistory(userId: number, limit: number = 20,
   }));
 }
 
-export async function getConversationById(conversationId: number, userId: number) {
+export async function getConversationById(conversationId: number, userId: number, orgId: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  await ensureOrgOwnership(userId, orgId);
+  
   const result = await db.select()
     .from(conversationHistory)
-    .where(and(eq(conversationHistory.id, conversationId), eq(conversationHistory.userId, userId)))
+    .where(and(eq(conversationHistory.id, conversationId), eq(conversationHistory.userId, userId), eq(conversationHistory.orgId, orgId)))
     .limit(1);
   
   if (!result.length) return null;
@@ -1007,14 +1136,16 @@ export async function getConversationById(conversationId: number, userId: number
   };
 }
 
-export async function deleteConversation(conversationId: number, userId: number) {
+export async function deleteConversation(conversationId: number, userId: number, orgId: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  
+  await ensureOrgOwnership(userId, orgId);
   
   // Verify ownership
   const conv = await db.select()
     .from(conversationHistory)
-    .where(eq(conversationHistory.id, conversationId))
+    .where(and(eq(conversationHistory.id, conversationId), eq(conversationHistory.orgId, orgId)))
     .limit(1);
   
   // Se a conversa não existe, retorna sucesso (idempotente)
@@ -1028,7 +1159,7 @@ export async function deleteConversation(conversationId: number, userId: number)
   }
   
   // Delete real da conversa
-  await db.delete(conversationHistory).where(eq(conversationHistory.id, conversationId));
+  await db.delete(conversationHistory).where(and(eq(conversationHistory.id, conversationId), eq(conversationHistory.orgId, orgId)));
   
   return { success: true };
 }
@@ -1040,13 +1171,15 @@ export async function deleteConversation(conversationId: number, userId: number)
 /**
  * Retorna o tier atual do usuário
  */
-export async function getUserTier(userId: number): Promise<string> {
+export async function getUserTier(userId: number, orgId: string): Promise<string> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  await ensureOrgOwnership(userId, orgId);
+  
   const user = await db.select({ tier: users.tier })
     .from(users)
-    .where(eq(users.id, userId))
+    .where(and(eq(users.id, userId), eq(users.orgId, orgId)))
     .limit(1);
   
   return user[0]?.tier || "FREE";
@@ -1055,15 +1188,17 @@ export async function getUserTier(userId: number): Promise<string> {
 /**
  * Atualiza o tier do usuário
  */
-export async function updateUserTier(userId: number, tier: TierType | "FREE"): Promise<void> {
+export async function updateUserTier(userId: number, orgId: string, tier: TierType | "FREE"): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  await ensureOrgOwnership(userId, orgId);
+  
   await db.update(users)
     .set({ tier: tier as any })
-    .where(eq(users.id, userId));
+    .where(and(eq(users.id, userId), eq(users.orgId, orgId)));
   
-  console.log(`[DB] User ${userId} tier updated to ${tier}`);
+  console.log(`[DB] User ${userId} orgId=${orgId} tier updated to ${tier}`);
 }
 
 /**
@@ -1071,6 +1206,7 @@ export async function updateUserTier(userId: number, tier: TierType | "FREE"): P
  */
 export async function createPurchase(data: {
   userId: number;
+  orgId: string;
   tier: TierType;
   stripeSessionId?: string;
   stripeSubscriptionId?: string;
@@ -1081,8 +1217,11 @@ export async function createPurchase(data: {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  await ensureOrgOwnership(data.userId, data.orgId);
+  
   const result = await db.insert(purchases).values({
     userId: data.userId,
+    orgId: data.orgId,
     tier: data.tier as any,
     stripeSessionId: data.stripeSessionId,
     stripeSubscriptionId: data.stripeSubscriptionId,
@@ -1134,22 +1273,26 @@ export async function getPurchaseBySessionId(stripeSessionId: string) {
 /**
  * Lista compras de um usuário
  */
-export async function getUserPurchases(userId: number) {
+export async function getUserPurchases(userId: number, orgId: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
+  await ensureOrgOwnership(userId, orgId);
+  
   return db.select()
     .from(purchases)
-    .where(eq(purchases.userId, userId))
+    .where(and(eq(purchases.userId, userId), eq(purchases.orgId, orgId)))
     .orderBy(desc(purchases.createdAt));
 }
 
 /**
  * Conta mensagens do usuário hoje (para paywall de limites)
  */
-export async function countUserMessagesToday(userId: number): Promise<number> {
+export async function countUserMessagesToday(userId: number, orgId: string): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
+  
+  await ensureOrgOwnership(userId, orgId);
   
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -1158,6 +1301,7 @@ export async function countUserMessagesToday(userId: number): Promise<number> {
     .from(messages)
     .where(and(
       eq(messages.userId, userId),
+      eq(messages.orgId, orgId),
       eq(messages.role, "user"),
       gte(messages.createdAt, today)
     ));

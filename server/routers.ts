@@ -66,11 +66,12 @@ export const appRouter = router({
       .input(z.object({ message: z.string().min(1) }))
       .mutation(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
-        if (!userId) throw new Error("User not authenticated");
+        const orgId = ctx.orgId;
+        if (!userId || !orgId) throw new Error("User not authenticated");
 
         try {
           // Get user profile for context
-          const userProfile = await db.getUserProfile(userId);
+          const userProfile = await db.getUserProfile(userId, orgId);
           
           // =============================================
           // PAYWALL: Verificar limite de mensagens diárias
@@ -79,11 +80,11 @@ export const appRouter = router({
           const tierLimits = db.TIER_LIMITS[tier] || db.TIER_LIMITS.FREE;
           
           if (tierLimits.dailyMessages !== Infinity) {
-            const messagesToday = await db.countUserMessagesToday(userId);
+            const messagesToday = await db.countUserMessagesToday(userId, orgId);
             
             if (messagesToday >= tierLimits.dailyMessages) {
               // [BROCRAFT][EVENT] Telemetria de limite de mensagens atingido
-              console.log(`[BROCRAFT][EVENT] type="limit_reached" userId=${userId} tier="${tier}" dailyLimit=${tierLimits.dailyMessages} messagesUsed=${messagesToday}`);
+              console.log(`[BROCRAFT][EVENT] type="limit_reached" userId=${userId} orgId=${orgId} tier="${tier}" dailyLimit=${tierLimits.dailyMessages} messagesUsed=${messagesToday}`);
               
               throw new TRPCError({
                 code: "FORBIDDEN",
@@ -94,7 +95,7 @@ export const appRouter = router({
           // =============================================
           
           // Save user message
-          await db.saveMessage(userId, "user", input.message);
+          await db.saveMessage(userId, orgId, "user", input.message);
 
           // Prepare system prompt with user context
           const contextualPrompt = `${BROCRAFT_SYSTEM_PROMPT}
@@ -119,16 +120,16 @@ export const appRouter = router({
           
           // Save assistant message
           const xpGained = 10; // Base XP for chat
-          await db.saveMessage(userId, "assistant", assistantMessage, xpGained);
+          await db.saveMessage(userId, orgId, "assistant", assistantMessage, xpGained);
           
           // Add XP and check for rank up
-          const xpResult = await db.addXP(userId, xpGained);
+          const xpResult = await db.addXP(userId, orgId, xpGained);
           
           // Check and award badges
-          const badgeResult = await db.checkAndAwardBadges(userId);
+          const badgeResult = await db.checkAndAwardBadges(userId, orgId);
 
           // Retornar info de limite restante
-          const newMessageCount = await db.countUserMessagesToday(userId);
+          const newMessageCount = await db.countUserMessagesToday(userId, orgId);
           const messagesRemaining = tierLimits.dailyMessages === Infinity 
             ? null 
             : tierLimits.dailyMessages - newMessageCount;
@@ -151,9 +152,10 @@ export const appRouter = router({
       .input(z.object({ limit: z.number().default(50), offset: z.number().default(0) }))
       .query(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
-        if (!userId) throw new Error("User not authenticated");
+        const orgId = ctx.orgId;
+        if (!userId || !orgId) throw new Error("User not authenticated");
 
-        return db.getUserMessages(userId, input.limit, input.offset);
+        return db.getUserMessages(userId, orgId, input.limit, input.offset);
       }),
   }),
 
@@ -161,26 +163,29 @@ export const appRouter = router({
   gamification: router({
     getProfile: protectedProcedure.query(async ({ ctx }) => {
       const userId = ctx.user?.id;
-      if (!userId) throw new Error("User not authenticated");
+      const orgId = ctx.orgId;
+      if (!userId || !orgId) throw new Error("User not authenticated");
 
-      return db.getUserProfile(userId);
+      return db.getUserProfile(userId, orgId);
     }),
 
     addXP: protectedProcedure
       .input(z.object({ amount: z.number().positive() }))
       .mutation(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
-        if (!userId) throw new Error("User not authenticated");
+        const orgId = ctx.orgId;
+        if (!userId || !orgId) throw new Error("User not authenticated");
 
-        return db.addXP(userId, input.amount);
+        return db.addXP(userId, orgId, input.amount);
       }),
     
     // Badges
     getBadges: protectedProcedure.query(async ({ ctx }) => {
       const userId = ctx.user?.id;
-      if (!userId) throw new Error("User not authenticated");
+      const orgId = ctx.orgId;
+      if (!userId || !orgId) throw new Error("User not authenticated");
 
-      return db.getUserBadges(userId);
+      return db.getUserBadges(userId, orgId);
     }),
     
     getAllBadgeDefinitions: publicProcedure.query(() => {
@@ -196,32 +201,38 @@ export const appRouter = router({
         difficulty: z.string().optional(),
         limit: z.number().default(50),
       }))
-      .query(async ({ input }) => {
-        return db.getRecipes(input.category, input.difficulty, input.limit);
+      .query(async ({ input, ctx }) => {
+        // For public recipes, use default org or require orgId in input
+        // For now, we'll require orgId from context if user is authenticated, otherwise use default
+        const orgId = ctx.orgId || await db.getDefaultOrgId();
+        return db.getRecipes(orgId, input.category, input.difficulty, input.limit);
       }),
 
     getById: publicProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
-        return db.getRecipeById(input.id);
+      .query(async ({ input, ctx }) => {
+        const orgId = ctx.orgId || await db.getDefaultOrgId();
+        return db.getRecipeById(input.id, orgId);
       }),
 
     userRecipes: protectedProcedure
       .input(z.object({ status: z.string().optional() }))
       .query(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
-        if (!userId) throw new Error("User not authenticated");
+        const orgId = ctx.orgId;
+        if (!userId || !orgId) throw new Error("User not authenticated");
 
-        return db.getUserRecipes(userId, input.status);
+        return db.getUserRecipes(userId, orgId, input.status);
       }),
 
     startRecipe: protectedProcedure
       .input(z.object({ recipeId: z.number() }))
       .mutation(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
-        if (!userId) throw new Error("User not authenticated");
+        const orgId = ctx.orgId;
+        if (!userId || !orgId) throw new Error("User not authenticated");
 
-        return db.startRecipe(userId, input.recipeId);
+        return db.startRecipe(userId, orgId, input.recipeId);
       }),
 
     completeRecipe: protectedProcedure
@@ -232,12 +243,13 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
-        if (!userId) throw new Error("User not authenticated");
+        const orgId = ctx.orgId;
+        if (!userId || !orgId) throw new Error("User not authenticated");
 
-        const result = await db.completeRecipe(userId, input.userRecipeId, input.rating, input.photo);
+        const result = await db.completeRecipe(userId, orgId, input.userRecipeId, input.rating, input.photo);
         
         // Check and award badges after completing recipe
-        const badgeResult = await db.checkAndAwardBadges(userId);
+        const badgeResult = await db.checkAndAwardBadges(userId, orgId);
         
         return {
           ...result,
@@ -258,7 +270,8 @@ export const appRouter = router({
       .query(async ({ input, ctx }) => {
         // Passa userId se autenticado para calcular hasVoted
         const currentUserId = ctx.user?.id;
-        return db.getCommunityPosts(input.category, input.limit, input.cursor ?? undefined, currentUserId);
+        const orgId = ctx.orgId || await db.getDefaultOrgId();
+        return db.getCommunityPosts(orgId, input.category, input.limit, input.cursor ?? undefined, currentUserId);
       }),
 
     createPost: protectedProcedure
@@ -274,9 +287,10 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
-        if (!userId) throw new Error("User not authenticated");
+        const orgId = ctx.orgId;
+        if (!userId || !orgId) throw new Error("User not authenticated");
 
-        return db.createCommunityPost(userId, input);
+        return db.createCommunityPost(userId, orgId, input);
       }),
 
     // Toggle de voto (vota/desvota)
@@ -287,9 +301,10 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
-        if (!userId) throw new Error("User not authenticated");
+        const orgId = ctx.orgId;
+        if (!userId || !orgId) throw new Error("User not authenticated");
 
-        return db.toggleVotePost(userId, input.postId, input.voteType);
+        return db.toggleVotePost(userId, orgId, input.postId, input.voteType);
       }),
 
     getLeaderboard: publicProcedure
@@ -297,8 +312,9 @@ export const appRouter = router({
         category: z.enum(COMMUNITY_CATEGORY_VALUES as [string, ...string[]]).optional(),
         timeframe: z.enum(LEADERBOARD_TIMEFRAMES as [string, ...string[]]).default("ALL"),
       }))
-      .query(async ({ input }) => {
-        return db.getLeaderboard(input.category, input.timeframe);
+      .query(async ({ input, ctx }) => {
+        const orgId = ctx.orgId || await db.getDefaultOrgId();
+        return db.getLeaderboard(orgId, input.category, input.timeframe);
       }),
   }),
 
@@ -310,15 +326,17 @@ export const appRouter = router({
         limit: z.number().default(20),
         offset: z.number().default(0),
       }))
-      .query(async ({ input }) => {
-        return db.getProducts(input.category, input.limit, input.offset);
+      .query(async ({ input, ctx }) => {
+        const orgId = ctx.orgId || await db.getDefaultOrgId();
+        return db.getProducts(orgId, input.category, input.limit, input.offset);
       }),
 
     getCart: protectedProcedure.query(async ({ ctx }) => {
       const userId = ctx.user?.id;
-      if (!userId) throw new Error("User not authenticated");
+      const orgId = ctx.orgId;
+      if (!userId || !orgId) throw new Error("User not authenticated");
 
-      return db.getCart(userId);
+      return db.getCart(userId, orgId);
     }),
 
     addToCart: protectedProcedure
@@ -328,25 +346,28 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
-        if (!userId) throw new Error("User not authenticated");
+        const orgId = ctx.orgId;
+        if (!userId || !orgId) throw new Error("User not authenticated");
 
-        return db.addToCart(userId, input.productId, input.quantity);
+        return db.addToCart(userId, orgId, input.productId, input.quantity);
       }),
 
     removeFromCart: protectedProcedure
       .input(z.object({ cartItemId: z.number() }))
       .mutation(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
-        if (!userId) throw new Error("User not authenticated");
+        const orgId = ctx.orgId;
+        if (!userId || !orgId) throw new Error("User not authenticated");
 
-        return db.removeFromCart(userId, input.cartItemId);
+        return db.removeFromCart(userId, orgId, input.cartItemId);
       }),
 
     checkout: protectedProcedure.mutation(async ({ ctx }) => {
       const userId = ctx.user?.id;
-      if (!userId) throw new Error("User not authenticated");
+      const orgId = ctx.orgId;
+      if (!userId || !orgId) throw new Error("User not authenticated");
 
-      return db.createOrder(userId);
+      return db.createOrder(userId, orgId);
     }),
   }),
 
@@ -364,9 +385,10 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
-        if (!userId) throw new Error("User not authenticated");
+        const orgId = ctx.orgId;
+        if (!userId || !orgId) throw new Error("User not authenticated");
 
-        return db.saveConversationHistory(userId, input.title, input.messages, input.xpGained);
+        return db.saveConversationHistory(userId, orgId, input.title, input.messages, input.xpGained);
       }),
 
     getHistory: protectedProcedure
@@ -376,27 +398,30 @@ export const appRouter = router({
       }))
       .query(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
-        if (!userId) throw new Error("User not authenticated");
+        const orgId = ctx.orgId;
+        if (!userId || !orgId) throw new Error("User not authenticated");
 
-        return db.getConversationHistory(userId, input.limit, input.offset);
+        return db.getConversationHistory(userId, orgId, input.limit, input.offset);
       }),
 
     getById: protectedProcedure
       .input(z.object({ conversationId: z.number() }))
       .query(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
-        if (!userId) throw new Error("User not authenticated");
+        const orgId = ctx.orgId;
+        if (!userId || !orgId) throw new Error("User not authenticated");
 
-        return db.getConversationById(input.conversationId, userId);
+        return db.getConversationById(input.conversationId, userId, orgId);
       }),
 
     delete: protectedProcedure
       .input(z.object({ conversationId: z.number() }))
       .mutation(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
-        if (!userId) throw new Error("User not authenticated");
+        const orgId = ctx.orgId;
+        if (!userId || !orgId) throw new Error("User not authenticated");
 
-        return db.deleteConversation(input.conversationId, userId);
+        return db.deleteConversation(input.conversationId, userId, orgId);
       }),
   }),
 
@@ -405,10 +430,11 @@ export const appRouter = router({
     // Retorna informações de billing do usuário
     getStatus: protectedProcedure.query(async ({ ctx }) => {
       const userId = ctx.user?.id;
-      if (!userId) throw new TRPCError({ code: "UNAUTHORIZED" });
+      const orgId = ctx.orgId;
+      if (!userId || !orgId) throw new TRPCError({ code: "UNAUTHORIZED" });
 
-      const tier = await db.getUserTier(userId);
-      const purchases = await db.getUserPurchases(userId);
+      const tier = await db.getUserTier(userId, orgId);
+      const purchases = await db.getUserPurchases(userId, orgId);
 
       return {
         tier,
@@ -430,8 +456,9 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
+        const orgId = ctx.orgId;
         const userEmail = ctx.user?.email;
-        if (!userId) throw new TRPCError({ code: "UNAUTHORIZED" });
+        if (!userId || !orgId) throw new TRPCError({ code: "UNAUTHORIZED" });
 
         // Verificar se Stripe está configurado
         if (!isStripeConfigured()) {
@@ -442,7 +469,7 @@ export const appRouter = router({
         }
 
         // Verificar se usuário já tem esse tier ou superior
-        const currentTier = await db.getUserTier(userId);
+        const currentTier = await db.getUserTier(userId, orgId);
         const tierOrder = { FREE: 0, MESTRE: 1, CLUBE_BRO: 2 };
         
         if (tierOrder[currentTier as keyof typeof tierOrder] >= tierOrder[input.tier]) {
@@ -463,6 +490,7 @@ export const appRouter = router({
           // Registrar compra como pendente
           await db.createPurchase({
             userId,
+            orgId,
             tier: input.tier,
             stripeSessionId: sessionId,
             amount: STRIPE_PLANS[input.tier].price,

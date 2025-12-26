@@ -101,7 +101,26 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     return;
   }
 
-  // 1. Atualizar status da compra para COMPLETED
+  // 1. Buscar usuário para obter orgId
+  const user = await db.getUserById(userIdNum);
+  if (!user || !user.orgId) {
+    console.error("[BROCRAFT][Stripe] ❌ User not found or missing orgId:", userIdNum);
+    // Fallback: usar default org (não ideal, mas funcional para migração)
+    const defaultOrgId = await db.getDefaultOrgId();
+    await db.updatePurchaseStatus(
+      session.id,
+      "COMPLETED",
+      subscriptionId,
+      customerId
+    );
+    await db.updateUserTier(userIdNum, defaultOrgId, tier);
+    console.log(`[BROCRAFT][Stripe] ✅ Used default orgId for user ${userIdNum}`);
+    return;
+  }
+
+  const orgId = user.orgId;
+
+  // 2. Atualizar status da compra para COMPLETED
   await db.updatePurchaseStatus(
     session.id,
     "COMPLETED",
@@ -109,8 +128,8 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     customerId
   );
 
-  // 2. Atualizar tier do usuário
-  await db.updateUserTier(userIdNum, tier);
+  // 3. Atualizar tier do usuário
+  await db.updateUserTier(userIdNum, orgId, tier);
 
   // [BROCRAFT][EVENT] Telemetria de upgrade de tier
   console.log(`[BROCRAFT][EVENT] type="tier_upgrade" userId=${userIdNum} newTier="${tier}" stripeSessionId="${session.id}"`);

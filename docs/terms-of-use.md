@@ -89,3 +89,5 @@ Estes termos são regidos pelas leis do Brasil.
 Ao usar o BROCRAFT, você confirma que leu, entendeu e concorda com estes Termos de Uso.
 
 
+
+

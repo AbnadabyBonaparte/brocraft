@@ -34,7 +34,7 @@ function getStripe(): Stripe {
       throw new Error("STRIPE_SECRET_KEY não configurada");
     }
     stripeInstance = new Stripe(secretKey, {
-      apiVersion: "2025-05-28.basil",
+      apiVersion: "2025-11-17.clover",
     });
   }
   return stripeInstance;

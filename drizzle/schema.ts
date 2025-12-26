@@ -2,11 +2,27 @@ import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json } from "driz
 import { relations } from "drizzle-orm";
 
 /**
+ * Organizations table for multi-tenant isolation.
+ * Each organization is completely isolated from others.
+ */
+export const organizations = mysqlTable("organizations", {
+  id: varchar("id", { length: 36 }).primaryKey(), // UUID stored as varchar(36)
+  name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 100 }).notNull().unique(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Organization = typeof organizations.$inferSelect;
+export type InsertOrganization = typeof organizations.$inferInsert;
+
+/**
  * Core user table backing auth flow.
  * Extended with gamification fields for BROCRAFT.
+ * Multi-tenant: each user belongs to an organization.
  */
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
@@ -30,6 +46,7 @@ export type InsertUser = typeof users.$inferInsert;
 // Messages table for chat history
 export const messages = mysqlTable("messages", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
   userId: int("userId").notNull(),
   role: varchar("role", { length: 20 }).notNull(), // 'user' | 'assistant'
   content: text("content").notNull(),
@@ -43,8 +60,9 @@ export type InsertMessage = typeof messages.$inferInsert;
 // Recipes table
 export const recipes = mysqlTable("recipes", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
   name: varchar("name", { length: 255 }).notNull(),
-  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  slug: varchar("slug", { length: 255 }).notNull(), // Unique per org (enforced at application level)
   category: mysqlEnum("category", ["CERVEJA", "FERMENTADOS", "LATICINIOS", "CHARCUTARIA", "DESTILADOS"]).notNull(),
   difficulty: mysqlEnum("difficulty", ["RAJADO", "CLASSICO", "MESTRE"]).notNull(),
   description: text("description").notNull(),
@@ -71,6 +89,7 @@ export type InsertRecipe = typeof recipes.$inferInsert;
 // User recipes (tracking user progress)
 export const userRecipes = mysqlTable("userRecipes", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
   userId: int("userId").notNull(),
   recipeId: int("recipeId").notNull(),
   
@@ -89,6 +108,7 @@ export type InsertUserRecipe = typeof userRecipes.$inferInsert;
 // Badges table
 export const badges = mysqlTable("badges", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
   userId: int("userId").notNull(),
   
   type: varchar("type", { length: 100 }).notNull(),
@@ -104,13 +124,42 @@ export type Badge = typeof badges.$inferSelect;
 export type InsertBadge = typeof badges.$inferInsert;
 
 // Relations
-export const usersRelations = relations(users, ({ many }) => ({
+export const organizationsRelations = relations(organizations, ({ many }) => ({
+  users: many(users),
+  messages: many(messages),
+  recipes: many(recipes),
+  userRecipes: many(userRecipes),
+  badges: many(badges),
+  communityPosts: many(communityPosts),
+  votes: many(votes),
+  products: many(products),
+  cartItems: many(cartItems),
+  orders: many(orders),
+  conversationHistory: many(conversationHistory),
+  purchases: many(purchases),
+}));
+
+export const usersRelations = relations(users, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [users.orgId],
+    references: [organizations.id],
+  }),
   messages: many(messages),
   userRecipes: many(userRecipes),
   badges: many(badges),
+  communityPosts: many(communityPosts),
+  votes: many(votes),
+  cartItems: many(cartItems),
+  orders: many(orders),
+  conversationHistory: many(conversationHistory),
+  purchases: many(purchases),
 }));
 
 export const messagesRelations = relations(messages, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [messages.orgId],
+    references: [organizations.id],
+  }),
   user: one(users, {
     fields: [messages.userId],
     references: [users.id],
@@ -118,6 +167,10 @@ export const messagesRelations = relations(messages, ({ one }) => ({
 }));
 
 export const userRecipesRelations = relations(userRecipes, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [userRecipes.orgId],
+    references: [organizations.id],
+  }),
   user: one(users, {
     fields: [userRecipes.userId],
     references: [users.id],
@@ -129,19 +182,28 @@ export const userRecipesRelations = relations(userRecipes, ({ one }) => ({
 }));
 
 export const badgesRelations = relations(badges, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [badges.orgId],
+    references: [organizations.id],
+  }),
   user: one(users, {
     fields: [badges.userId],
     references: [users.id],
   }),
 }));
 
-export const recipesRelations = relations(recipes, ({ many }) => ({
+export const recipesRelations = relations(recipes, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [recipes.orgId],
+    references: [organizations.id],
+  }),
   userRecipes: many(userRecipes),
 }));
 
 // Community posts table
 export const communityPosts = mysqlTable("communityPosts", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
   userId: int("userId").notNull(),
   recipeId: int("recipeId"),
   
@@ -169,6 +231,7 @@ export type InsertCommunityPost = typeof communityPosts.$inferInsert;
 // Votes table for ranking
 export const votes = mysqlTable("votes", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
   userId: int("userId").notNull(),
   postId: int("postId").notNull(),
   
@@ -183,6 +246,7 @@ export type InsertVote = typeof votes.$inferInsert;
 // Marketplace products table
 export const products = mysqlTable("products", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
   
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
@@ -205,6 +269,7 @@ export type InsertProduct = typeof products.$inferInsert;
 // Cart items
 export const cartItems = mysqlTable("cartItems", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
   userId: int("userId").notNull(),
   productId: int("productId").notNull(),
   
@@ -219,6 +284,7 @@ export type InsertCartItem = typeof cartItems.$inferInsert;
 // Orders
 export const orders = mysqlTable("orders", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
   userId: int("userId").notNull(),
   
   total: int("total").notNull(), // em centavos
@@ -237,6 +303,7 @@ export type InsertOrder = typeof orders.$inferInsert;
 // Conversation history table
 export const conversationHistory = mysqlTable("conversationHistory", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
   userId: int("userId").notNull(),
   
   title: varchar("title", { length: 255 }).notNull(),
@@ -255,6 +322,7 @@ export type InsertConversationHistory = typeof conversationHistory.$inferInsert;
 // Purchases table (tier upgrades via Stripe)
 export const purchases = mysqlTable("purchases", {
   id: int("id").autoincrement().primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
   userId: int("userId").notNull(),
   
   tier: mysqlEnum("tier", ["MESTRE", "CLUBE_BRO"]).notNull(),
@@ -277,6 +345,10 @@ export type InsertPurchase = typeof purchases.$inferInsert;
 
 // Relations for community posts
 export const communityPostsRelations = relations(communityPosts, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [communityPosts.orgId],
+    references: [organizations.id],
+  }),
   user: one(users, {
     fields: [communityPosts.userId],
     references: [users.id],
@@ -289,6 +361,10 @@ export const communityPostsRelations = relations(communityPosts, ({ one, many })
 }));
 
 export const votesRelations = relations(votes, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [votes.orgId],
+    references: [organizations.id],
+  }),
   user: one(users, {
     fields: [votes.userId],
     references: [users.id],
@@ -299,11 +375,19 @@ export const votesRelations = relations(votes, ({ one }) => ({
   }),
 }));
 
-export const productsRelations = relations(products, ({ many }) => ({
+export const productsRelations = relations(products, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [products.orgId],
+    references: [organizations.id],
+  }),
   cartItems: many(cartItems),
 }));
 
 export const cartItemsRelations = relations(cartItems, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [cartItems.orgId],
+    references: [organizations.id],
+  }),
   user: one(users, {
     fields: [cartItems.userId],
     references: [users.id],
@@ -315,19 +399,36 @@ export const cartItemsRelations = relations(cartItems, ({ one }) => ({
 }));
 
 export const ordersRelations = relations(orders, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [orders.orgId],
+    references: [organizations.id],
+  }),
   user: one(users, {
     fields: [orders.userId],
     references: [users.id],
   }),
 }));
 
-// Update users relations to include community posts and votes
-export const usersRelationsUpdated = relations(users, ({ many }) => ({
-  messages: many(messages),
-  userRecipes: many(userRecipes),
-  badges: many(badges),
-  communityPosts: many(communityPosts),
-  votes: many(votes),
-  cartItems: many(cartItems),
-  orders: many(orders),
+// Conversation history relations
+export const conversationHistoryRelations = relations(conversationHistory, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [conversationHistory.orgId],
+    references: [organizations.id],
+  }),
+  user: one(users, {
+    fields: [conversationHistory.userId],
+    references: [users.id],
+  }),
+}));
+
+// Purchases relations
+export const purchasesRelations = relations(purchases, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [purchases.orgId],
+    references: [organizations.id],
+  }),
+  user: one(users, {
+    fields: [purchases.userId],
+    references: [users.id],
+  }),
 }));

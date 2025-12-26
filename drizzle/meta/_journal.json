@@ -29,6 +29,13 @@
       "when": 1764253081267,
       "tag": "0003_colorful_mach_iv",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1735689600000,
+      "tag": "0004_multi_tenant_foundation",
+      "breakpoints": true
     }
   ]
 }

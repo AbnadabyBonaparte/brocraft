@@ -274,8 +274,11 @@ class SDKServer {
     if (!user) {
       try {
         const userInfo = await this.getUserInfoWithJwt(sessionCookie ?? "");
+        // Get default orgId for new users
+        const defaultOrgId = await db.getDefaultOrgId();
         await db.upsertUser({
           openId: userInfo.openId,
+          orgId: defaultOrgId,
           name: userInfo.name || null,
           email: userInfo.email ?? null,
           loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
@@ -292,8 +295,23 @@ class SDKServer {
       throw ForbiddenError("User not found");
     }
 
+    // Ensure user has orgId (migration support for existing users)
+    if (!user.orgId) {
+      const defaultOrgId = await db.getDefaultOrgId();
+      await db.upsertUser({
+        openId: user.openId,
+        orgId: defaultOrgId,
+        lastSignedIn: signedInAt,
+      });
+      user = await db.getUserByOpenId(user.openId);
+      if (!user) {
+        throw ForbiddenError("User not found after orgId assignment");
+      }
+    }
+
     await db.upsertUser({
       openId: user.openId,
+      orgId: user.orgId,
       lastSignedIn: signedInAt,
     });
 

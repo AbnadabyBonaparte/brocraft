@@ -24,3 +24,5 @@ Gerar os seguintes ícones a partir do logo do BROCRAFT:
 - [ ] Adicionar favicon.ico na raiz de public/
 
 
+
+
