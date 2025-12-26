@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card } from "@/components/ui/card";
-import { DashboardLayout } from "@/components/DashboardLayout";
+import { useFilteredData } from "@/hooks/useFilteredData";
 import { trpc } from "@/lib/trpc";
 import { Loader2, Award, Lock } from "lucide-react";
 
@@ -31,6 +32,10 @@ export default function Badges() {
 
   const allBadges = allBadgesQuery.data || [];
   const earnedBadges = userBadgesQuery.data || [];
+  const lockedBadges = useFilteredData(allBadgesQuery.data, {
+    customFilter: (badge) => !earnedBadgeTypes.has(badge.type),
+    dependencies: [earnedBadges.length],
+  });
 
   return (
     <DashboardLayout
@@ -166,39 +171,36 @@ export default function Badges() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {allBadges
-                .filter((badge) => !earnedBadgeTypes.has(badge.type))
-                .map((badge) => (
-                  <Card
-                    key={badge.type}
-                    className="bg-gray-900/50 border-gray-800/50 overflow-hidden opacity-60 hover:opacity-80 transition-all"
-                  >
-                    <div className="h-2 bg-gray-700" />
-                    <div className="p-6">
-                      <div className="flex items-start gap-4">
-                        <div className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl bg-gray-800 border-2 border-gray-700">
-                          <Lock className="h-6 w-6 text-gray-600" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-bold text-gray-400 text-lg">
-                            {badge.name}
-                          </h3>
-                          <p className="text-sm text-gray-500 mt-1">
-                            {badge.description}
-                          </p>
-                          <p className="text-xs text-orange-500/70 mt-2 font-semibold">
-                            🔒 Bloqueado
-                          </p>
-                        </div>
+              {lockedBadges.map((badge) => (
+                <Card
+                  key={badge.type}
+                  className="bg-gray-900/50 border-gray-800/50 overflow-hidden opacity-60 hover:opacity-80 transition-all"
+                >
+                  <div className="h-2 bg-gray-700" />
+                  <div className="p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl bg-gray-800 border-2 border-gray-700">
+                        <Lock className="h-6 w-6 text-gray-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-gray-400 text-lg">
+                          {badge.name}
+                        </h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {badge.description}
+                        </p>
+                        <p className="text-xs text-orange-500/70 mt-2 font-semibold">
+                          🔒 Bloqueado
+                        </p>
                       </div>
                     </div>
-                  </Card>
-                ))}
+                  </div>
+                </Card>
+              ))}
             </div>
           )}
 
-          {allBadges.filter((b) => !earnedBadgeTypes.has(b.type)).length ===
-            0 && (
+          {lockedBadges.length === 0 && (
             <Card className="bg-gradient-to-br from-orange-600/20 to-red-600/20 border-orange-500/30 p-8 text-center">
               <p className="text-orange-300 text-lg font-bold">
                 🎉 Parabéns! Você conquistou todos os badges!

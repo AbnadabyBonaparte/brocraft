@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { DashboardLayout } from "@/components/DashboardLayout";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { Loader2, Trash2, ChevronRight, Clock } from "lucide-react";
 import { useState } from "react";

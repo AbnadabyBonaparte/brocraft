@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,8 +10,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DashboardLayout } from "@/components/DashboardLayout";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useFilteredData } from "@/hooks/useFilteredData";
+import { ROUTES } from "@/shared/routes";
 import { Loader2, BookOpen, Search, Flame, Filter } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -42,18 +44,24 @@ export default function Recipes() {
 
   const startRecipeMutation = trpc.recipes.startRecipe.useMutation();
 
-  const filteredRecipes = useMemo(
-    () =>
-      recipesQuery.data?.filter((recipe) =>
-        recipe.name.toLowerCase().includes(search.toLowerCase())
-      ) || [],
-    [recipesQuery.data, search]
-  );
+  const filteredRecipes = useFilteredData(recipesQuery.data, {
+    searchTerm: search,
+    searchKeys: ["name"],
+    customFilter: (recipe) => {
+      const matchesCategory = category ? recipe.category === category : true;
+      const matchesDifficulty = difficulty
+        ? recipe.difficulty === difficulty
+        : true;
+
+      return matchesCategory && matchesDifficulty;
+    },
+    dependencies: [category, difficulty],
+  });
 
   const handleStartRecipe = async (recipeId: number) => {
     try {
       await startRecipeMutation.mutateAsync({ recipeId });
-      navigate("/");
+      navigate(ROUTES.HOME);
     } catch (error) {
       console.error("Erro ao iniciar receita:", error);
     }

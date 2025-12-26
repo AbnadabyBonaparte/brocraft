@@ -9,8 +9,8 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { 
-  CheckCircle2, 
+import {
+  CheckCircle2,
   Circle, 
   MessageSquare, 
   BookOpen, 
@@ -20,6 +20,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { ROUTES } from "@/shared/routes";
 
 const ONBOARDING_STORAGE_KEY = "brocraft_onboarding";
 
@@ -38,28 +39,28 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     title: "Envie sua primeira mensagem",
     description: "Converse com o assistente BROCRAFT",
     icon: <MessageSquare className="h-5 w-5" />,
-    href: "/",
+    href: ROUTES.HOME,
   },
   {
     id: "view_recipes",
     title: "Explore as receitas",
     description: "Descubra receitas de fermentação",
     icon: <BookOpen className="h-5 w-5" />,
-    href: "/receitas",
+    href: ROUTES.RECIPES,
   },
   {
     id: "view_badges",
     title: "Veja seus badges",
     description: "Confira suas conquistas",
     icon: <Award className="h-5 w-5" />,
-    href: "/badges",
+    href: ROUTES.BADGES,
   },
   {
     id: "visit_community",
     title: "Visite a comunidade",
     description: "Conecte-se com outros Bros",
     icon: <Users className="h-5 w-5" />,
-    href: "/comunidade",
+    href: ROUTES.COMMUNITY,
   },
 ];
 

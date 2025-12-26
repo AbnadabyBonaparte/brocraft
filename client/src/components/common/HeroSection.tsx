@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Flame, Zap } from "lucide-react";
-import { getLoginUrl } from "@/const";
+import { getLoginUrl } from "@/shared/const";
 
 export function HeroSection() {
   return (

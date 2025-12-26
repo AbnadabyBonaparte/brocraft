@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Check, X, Zap, Loader2, Crown, Sparkles } from "lucide-react";
-import { getLoginUrl } from "@/const";
+import { getLoginUrl } from "@/shared/const";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
