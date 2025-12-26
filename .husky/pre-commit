@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+set -e
+
+pnpm lint-staged
+pnpm run check:hardcoded
+pnpm lint
+pnpm check
+pnpm build
