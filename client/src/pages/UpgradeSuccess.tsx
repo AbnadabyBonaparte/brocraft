@@ -12,6 +12,13 @@ export default function UpgradeSuccess() {
   const { isAuthenticated } = useAuth();
   const [showConfetti, setShowConfetti] = useState(false);
 
+  const getColorToken = (variable: string, fallback: string) => {
+    const value = getComputedStyle(document.documentElement)
+      .getPropertyValue(variable)
+      .trim();
+    return value || fallback;
+  };
+
   // Pegar tier da query string
   const urlParams = new URLSearchParams(window.location.search);
   const tier = urlParams.get("tier") || "MESTRE";
@@ -27,10 +34,14 @@ export default function UpgradeSuccess() {
   useEffect(() => {
     if (!showConfetti) {
       setShowConfetti(true);
-      
+
       // Confetti burst
       const duration = 3000;
       const end = Date.now() + duration;
+      const gold = getColorToken("--color-primary", "#d4af37");
+      const ember = getColorToken("--color-orange-500", "#d67a2c");
+      const glow = getColorToken("--color-royal-500", "#b497ff");
+      const confettiColors = [gold, ember, glow];
 
       const frame = () => {
         confetti({
@@ -38,14 +49,14 @@ export default function UpgradeSuccess() {
           angle: 60,
           spread: 55,
           origin: { x: 0 },
-          colors: ["#FF6B00", "#FF0000", "#FFD700"],
+          colors: confettiColors,
         });
         confetti({
           particleCount: 3,
           angle: 120,
           spread: 55,
           origin: { x: 1 },
-          colors: ["#FF6B00", "#FF0000", "#FFD700"],
+          colors: confettiColors,
         });
 
         if (Date.now() < end) {
@@ -77,7 +88,7 @@ export default function UpgradeSuccess() {
   const info = tierInfo[tier as keyof typeof tierInfo] || tierInfo.MESTRE;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-background flex items-center justify-center p-4 text-foreground">
       <Card className={`max-w-lg w-full bg-gradient-to-br ${info.bgColor} border-none backdrop-blur-sm p-8 text-center`}>
         {/* Icon */}
         <div className="flex justify-center mb-6">
@@ -93,18 +104,18 @@ export default function UpgradeSuccess() {
         </div>
 
         {/* Title */}
-        <h1 className="text-3xl font-black text-white mb-4">
+        <h1 className="text-3xl font-black text-foreground mb-4">
           {info.title}
         </h1>
 
         {/* Description */}
-        <p className="text-gray-300 text-lg mb-6">
+        <p className="text-muted-foreground text-lg mb-6">
           {info.description}
         </p>
 
         {/* Status */}
         {billingQuery.isLoading ? (
-          <div className="flex items-center justify-center gap-2 text-gray-400 mb-6">
+          <div className="flex items-center justify-center gap-2 text-muted-foreground mb-6">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span>Verificando status...</span>
           </div>
@@ -114,16 +125,16 @@ export default function UpgradeSuccess() {
             <span className="font-semibold">Seu plano já está ativo!</span>
           </div>
         ) : (
-          <div className="flex items-center justify-center gap-2 text-yellow-400 mb-6">
+          <div className="flex items-center justify-center gap-2 text-primary mb-6">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span>Ativando seu plano...</span>
           </div>
         )}
 
         {/* Features Preview */}
-        <div className="bg-gray-900/30 rounded-lg p-4 mb-6 text-left">
-          <p className="text-sm text-gray-400 uppercase font-bold mb-3">O que você ganhou:</p>
-          <ul className="space-y-2 text-sm text-gray-300">
+        <div className="bg-card/60 rounded-lg p-4 mb-6 text-left">
+          <p className="text-sm text-muted-foreground uppercase font-bold mb-3">O que você ganhou:</p>
+          <ul className="space-y-2 text-sm text-muted-foreground">
             {tier === "CLUBE_BRO" ? (
               <>
                 <li className="flex items-center gap-2">
@@ -165,7 +176,7 @@ export default function UpgradeSuccess() {
         {/* CTA */}
         <Button
           onClick={() => setLocation("/")}
-          className={`w-full bg-gradient-to-r ${info.color} hover:opacity-90 text-white font-bold py-6 text-lg`}
+          className={`w-full bg-gradient-to-r ${info.color} hover:opacity-90 text-primary-foreground font-bold py-6 text-lg`}
         >
           Começar a Fermentar
           <ArrowRight className="h-5 w-5 ml-2" />

@@ -1,0 +1,104 @@
+:root {
+  /* Core surfaces */
+  --theme-background: #050505;
+  --theme-surface: #0b0b0b;
+  --theme-surface-strong: #111111;
+  --theme-surface-muted: #0d0d0d;
+
+  /* Typography */
+  --theme-text-primary: #f5f5f5;
+  --theme-text-secondary: #a0a0a0;
+
+  /* Brand + actions */
+  --theme-primary: #d4af37;
+  --theme-primary-foreground: #0b0b0b;
+  --theme-accent: #f1dfa3;
+  --theme-accent-foreground: #050505;
+  --theme-border: rgba(212, 175, 55, 0.25);
+  --theme-ring: rgba(212, 175, 55, 0.55);
+
+  /* Supporting palette (gold-centric) */
+  --theme-amber-300: #f1b86b;
+  --theme-amber-400: #e9a15a;
+  --theme-amber-500: #d67a2c;
+  --theme-amber-600: #b75f21;
+  --theme-amber-700: #8e4319;
+
+  --theme-rose-400: #d5655b;
+  --theme-rose-500: #c94a3f;
+  --theme-rose-600: #a63b32;
+
+  --theme-royal-400: #c6b4ff;
+  --theme-royal-500: #b497ff;
+  --theme-royal-600: #8f6ed5;
+
+  --theme-ice-300: #b5dfff;
+  --theme-ice-400: #8bc7ff;
+  --theme-ice-500: #65aee6;
+
+  --theme-success-400: #8fd19e;
+  --theme-success-500: #6fb885;
+
+  /* Neutral scale (obsidian/marble inspired) */
+  --theme-gray-50: #f4f3ef;
+  --theme-gray-100: #e6e3db;
+  --theme-gray-200: #cac5b6;
+  --theme-gray-300: #a59f8a;
+  --theme-gray-400: #8a836d;
+  --theme-gray-500: #6d6654;
+  --theme-gray-600: #54503f;
+  --theme-gray-700: #3f3b2f;
+  --theme-gray-800: #2c2921;
+  --theme-gray-900: #181611;
+  --theme-gray-950: #0c0b08;
+}
+
+[data-theme="light"] {
+  --theme-background: #f8f6ef;
+  --theme-surface: #ffffff;
+  --theme-surface-strong: #f1ede0;
+  --theme-surface-muted: #eee9dd;
+
+  --theme-text-primary: #1a1a15;
+  --theme-text-secondary: #3f3a30;
+
+  --theme-primary: #c08d2c;
+  --theme-primary-foreground: #0f0c05;
+  --theme-accent: #f4e3b2;
+  --theme-accent-foreground: #1a1307;
+  --theme-border: rgba(192, 141, 44, 0.35);
+  --theme-ring: rgba(192, 141, 44, 0.6);
+
+  --theme-amber-300: #f4c581;
+  --theme-amber-400: #e9aa5a;
+  --theme-amber-500: #d98932;
+  --theme-amber-600: #ba6b1f;
+  --theme-amber-700: #8d4c17;
+
+  --theme-rose-400: #e1847c;
+  --theme-rose-500: #d05c50;
+  --theme-rose-600: #b5443c;
+
+  --theme-royal-400: #d7c9ff;
+  --theme-royal-500: #c3abff;
+  --theme-royal-600: #9a7adf;
+
+  --theme-ice-300: #cfe9ff;
+  --theme-ice-400: #a2d5ff;
+  --theme-ice-500: #7abcf3;
+
+  --theme-success-400: #6fb885;
+  --theme-success-500: #4f9c6b;
+
+  --theme-gray-50: #fdfbf4;
+  --theme-gray-100: #f4efe4;
+  --theme-gray-200: #e3dbc2;
+  --theme-gray-300: #c9bc96;
+  --theme-gray-400: #a68f63;
+  --theme-gray-500: #8b7247;
+  --theme-gray-600: #6f5a34;
+  --theme-gray-700: #554427;
+  --theme-gray-800: #3f321d;
+  --theme-gray-900: #2b2114;
+  --theme-gray-950: #1c150d;
+}
