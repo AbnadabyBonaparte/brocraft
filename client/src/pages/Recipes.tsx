@@ -14,8 +14,17 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useFilteredData } from "@/hooks/useFilteredData";
 import { ROUTES } from "@/shared/routes";
-import { Loader2, BookOpen, Search, Flame, Filter } from "lucide-react";
+import {
+  Loader2,
+  BookOpen,
+  Search,
+  Flame,
+  Filter,
+  AlertCircle,
+  RotateCcw,
+} from "lucide-react";
 import { useLocation } from "wouter";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const CATEGORIES = [
   { value: "CERVEJA", label: "🍺 Cerveja", color: "from-yellow-500 to-amber-700" },
@@ -31,16 +40,23 @@ const DIFFICULTIES = [
 ];
 
 export default function Recipes() {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const [, navigate] = useLocation();
   const [category, setCategory] = useState<string>("");
   const [difficulty, setDifficulty] = useState<string>("");
   const [search, setSearch] = useState<string>("");
 
-  const recipesQuery = trpc.recipes.list.useQuery({
-    category: category || undefined,
-    difficulty: difficulty || undefined,
-  });
+  const recipesQuery = trpc.recipes.list.useQuery(
+    {
+      category: category || undefined,
+      difficulty: difficulty || undefined,
+    },
+    {
+      refetchInterval: 15000,
+      staleTime: 10000,
+      retry: 2,
+    }
+  );
 
   const startRecipeMutation = trpc.recipes.startRecipe.useMutation();
 
@@ -75,7 +91,14 @@ export default function Recipes() {
     return DIFFICULTIES.find((d) => d.value === diff);
   };
 
-  const profileQuery = trpc.gamification.getProfile.useQuery();
+  const profileQuery = trpc.gamification.getProfile.useQuery(undefined, {
+    refetchInterval: 20000,
+  });
+
+  const isEmptyState =
+    !recipesQuery.isLoading &&
+    !recipesQuery.isError &&
+    (filteredRecipes?.length ?? 0) === 0;
 
   return (
     <DashboardLayout
@@ -160,10 +183,74 @@ export default function Recipes() {
 
         {/* Recipes Grid */}
         {recipesQuery.isLoading ? (
-          <div className="flex justify-center items-center py-20">
-            <Loader2 className="h-12 w-12 animate-spin text-orange-600" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <Card
+                key={index}
+                className="overflow-hidden border-gray-700/50 bg-gray-800/30 backdrop-blur-sm"
+              >
+                <Skeleton className="h-40 w-full" />
+                <div className="p-6 space-y-4">
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              </Card>
+            ))}
           </div>
-        ) : filteredRecipes.length > 0 ? (
+        ) : recipesQuery.isError ? (
+          <Card className="bg-red-900/20 border-red-500/30 backdrop-blur-sm">
+            <div className="text-center py-16 px-6 space-y-4">
+              <AlertCircle className="h-12 w-12 text-red-400 mx-auto" />
+              <div>
+                <h3 className="text-xl font-bold text-red-200 mb-2">Erro ao carregar receitas</h3>
+                <p className="text-red-100/80">
+                  Não foi possível acessar as receitas agora. Verifique sua conexão e tente novamente.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => recipesQuery.refetch()}
+                className="border-red-400/50 text-red-100 hover:bg-red-500/10"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Tentar novamente
+              </Button>
+            </div>
+          </Card>
+        ) : isEmptyState ? (
+          <Card className="bg-gray-800/30 border-gray-700/50 backdrop-blur-sm">
+            <div className="text-center py-20 space-y-4">
+              <BookOpen className="h-20 w-20 text-gray-600 mx-auto mb-2 opacity-50" />
+              <h3 className="text-2xl font-bold text-gray-300">Nenhuma receita encontrada</h3>
+              <p className="text-gray-500 text-base">
+                Ajuste seus filtros ou limpe a busca para descobrir novas receitas.
+              </p>
+              <div className="flex justify-center gap-3">
+                <Button
+                  variant="outline"
+                  className="border-gray-700 text-gray-200 hover:text-white hover:bg-gray-800"
+                  onClick={() => {
+                    setCategory("");
+                    setDifficulty("");
+                    setSearch("");
+                    recipesQuery.refetch();
+                  }}
+                >
+                  Limpar filtros
+                </Button>
+                <Button
+                  className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
+                  onClick={() => recipesQuery.refetch()}
+                >
+                  <Flame className="h-4 w-4 mr-2" />
+                  Buscar receitas
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredRecipes.map((recipe) => {
               const categoryInfo = CATEGORIES.find((c) => c.value === recipe.category);
@@ -268,18 +355,6 @@ export default function Recipes() {
               );
             })}
           </div>
-        ) : (
-          <Card className="bg-gray-800/30 border-gray-700/50 backdrop-blur-sm">
-            <div className="text-center py-20">
-              <BookOpen className="h-20 w-20 text-gray-600 mx-auto mb-6 opacity-50" />
-              <h3 className="text-2xl font-bold text-gray-300 mb-3">
-                Nenhuma receita encontrada
-              </h3>
-              <p className="text-gray-500 text-base">
-                Tente ajustar seus filtros de busca ou volte em breve para novas receitas.
-              </p>
-            </div>
-          </Card>
         )}
       </div>
     </DashboardLayout>
