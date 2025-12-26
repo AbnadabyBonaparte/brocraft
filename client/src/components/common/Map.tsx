@@ -76,7 +76,7 @@
 
 /// <reference types="@types/google.maps" />
 
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { cn } from "@/lib/utils";
 
@@ -116,7 +116,7 @@ interface MapViewProps {
   onMapReady?: (map: google.maps.Map) => void;
 }
 
-export function MapView({
+function MapViewComponent({
   className,
   initialCenter = { lat: 37.7749, lng: -122.4194 },
   initialZoom = 12,
@@ -153,3 +153,8 @@ export function MapView({
     <div ref={mapContainer} className={cn("w-full h-[500px]", className)} />
   );
 }
+
+const MapView = memo(MapViewComponent);
+MapView.displayName = "MapView";
+
+export { MapView };
