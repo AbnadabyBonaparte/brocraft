@@ -125,7 +125,7 @@ export function ChatBox() {
           description: `Você alcançou o rank ${rankName}!`,
           duration: 5000,
           style: {
-            background: "linear-gradient(135deg, #f97316, #ef4444)",
+            background: "linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-rose-500) 80%, transparent))",
             color: "white",
             border: "none",
           },
@@ -140,7 +140,7 @@ export function ChatBox() {
               description: `${badge.icon} ${badge.name}`,
               duration: 5000,
               style: {
-                background: badge.color || "#8B5CF6",
+                background: badge.color || "var(--color-royal-500)",
                 color: "white",
                 border: "none",
               },
@@ -238,7 +238,7 @@ export function ChatBox() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-2 md:p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-xs md:text-sm">
             <AlertTriangle className="h-4 w-4 flex-shrink-0" />
             <span className="flex-1">Limite diário atingido. Faça upgrade para continuar!</span>
-            <a href="/#pricing" className="text-orange-600 font-semibold hover:underline whitespace-nowrap">
+            <a href="/#pricing" className="text-primary font-semibold hover:underline whitespace-nowrap">
               Ver Planos
             </a>
           </div>

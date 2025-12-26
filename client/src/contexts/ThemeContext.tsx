@@ -37,6 +37,8 @@ export function ThemeProvider({
       root.classList.remove("dark");
     }
 
+    root.setAttribute("data-theme", theme);
+
     if (switchable) {
       localStorage.setItem("theme", theme);
     }
