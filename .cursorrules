@@ -1,0 +1,7 @@
+# BROCRAFT — Regras para Cursor
+
+- Zero cores hardcoded: use apenas tokens de tema (bg-background, text-foreground, border-border, bg-primary, text-destructive-foreground, etc.). Nada de bg-gray-*, text-white, hex em className/style.
+- Componentes UI: sempre usar @/components/ui/* (shadcn). Não criar botões/cards customizados quando o design system já cobre.
+- Dados reais: nenhum mock/fake/dummy em dados. Usar tRPC e server/db.
+- Estados de UI: sempre tratar loading, erro e empty (Skeleton, mensagem, retry).
+- Estrutura: client/src (pages, components, hooks, lib), server (_core, routers, db), shared. Ver CLAUDE.md e docs/ARCHITECTURE.md.
