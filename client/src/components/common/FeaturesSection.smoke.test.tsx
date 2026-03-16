@@ -4,6 +4,6 @@ describe("FeaturesSection (smoke)", () => {
   it("module exports correctly", async () => {
     const mod = await import("./FeaturesSection");
     expect(mod).toBeDefined();
-    expect(typeof (mod.FeaturesSection || mod.default)).toBe("function");
+    expect(typeof mod.FeaturesSection).toBe("function");
   });
 });
