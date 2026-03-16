@@ -1,155 +1,114 @@
-# AUDITORIA FORENSE ALSHAM — BROCRAFT
+# AUDITORIA FORENSE ALSHAM — BROCRAFT v∞
 
-**Data:** 13 de março de 2026  
-**Auditor:** Cursor — Protocolo Forense ALSHAM v1.0  
-**Repositório:** https://github.com/AbnadabyBonaparte/brocraft  
-**Branch default:** `main`
+> Gerada em: 2026-03-16 | Branch: claude/fix-vercel-dist-deploy-y0Hwz
 
 ---
 
-## 1. IDENTIDADE DO PROJETO
+## Scorecard Geral
 
-| Campo             | Valor                                                                                                                                                                                  |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Nome              | BROCRAFT                                                                                                                                                                               |
-| Descrição         | Assistente de IA gamificado para fermentação e artesanato alimentar (cerveja, queijos, fermentados, destilados). Chat com IA, XP/ranks/badges, receitas por nível, comunidade, Stripe. |
-| Tipo              | Webapp (SPA + API)                                                                                                                                                                     |
-| Stack             | React 19 + Vite 7 + TypeScript 5.9 + Tailwind 4 + Drizzle ORM + MySQL + tRPC + Express                                                                                                 |
-| Framework         | React (Vite)                                                                                                                                                                           |
-| Linguagem         | TypeScript                                                                                                                                                                             |
-| Build tool        | Vite 7                                                                                                                                                                                 |
-| Deploy            | Vercel (vercel.json; buildCommand: pnpm build)                                                                                                                                         |
-| Total de arquivos | 196 (excl. node_modules/.git/dist)                                                                                                                                                     |
-| Total de linhas   | ~25k+ (ts/tsx/css)                                                                                                                                                                     |
-| Construído por    | **Manus** (vite-plugin-manus-runtime, ManusDialog, forge.manus.im, Manus SDK)                                                                                                          |
-
----
-
-## 2. COMPARATIVO COM 6 LEIS ALSHAM
-
-### LEI 1: ZERO CORES HARDCODED
-
-- **Status:** ❌ **VIOLAÇÃO GRAVE**
-- **Hex hardcoded em TSX/TS:** 2 arquivos (UpgradeSuccess fallbacks `#d4af37`/`#d67a2c`/`#b497ff`; chart.tsx recharts `#ccc`/`#fff` em classes).
-- **Tailwind hardcoded:** **~230+ ocorrências** em **25 arquivos** (bg-gray-_, text-white, text-gray-_, border-gray-_, bg-blue-_, etc.). Páginas mais afetadas: Community (40), Recipes (24), Home (22), Privacy (20), ConversationHistory (19), PricingSection (16), Terms (14), Badges (11), UpgradeCancel (11), RecipeLevelModal (10), além de componentes comuns e vários componentes UI (slider, sheet, dialog, button, badge, etc.).
-- **SSOT de cores:** **EXISTE** — `client/src/styles/theme.css` define `--theme-*` (root + data-theme="light") e `client/src/index.css` mapeia para Tailwind via `@theme inline`. O projeto **tem** sistema de temas canônico, mas **as páginas e vários componentes não o utilizam** e usam gray/white/blue diretamente.
-
-### LEI 2: COMPONENTES UI PADRONIZADOS
-
-- **Status:** ✅ **CONFORME**
-- **Detalhes:** 53+ componentes shadcn/ui em `client/src/components/ui/` (Radix primitives + Tailwind). Card, Button, Input, Select, Dialog, Tabs, Skeleton, Spinner, etc. Padrão de import `@/components/ui/*`. Componentes de página (ChatBox, HeroSection, PricingSection, etc.) usam esses primitivos.
-
-### LEI 3: DADOS 100% REAIS
-
-- **Status:** ✅ **CONFORME**
-- **Mock/placeholder:** Nenhum array ou objeto mock (ex.: mockData, DUMMY_DATA). Ocorrências de "placeholder" são **apenas props de UI** (placeholder de input/select), e "hasFakeCaret" é do lib input-otp — não constituem dados falsos.
-- **Fonte de dados:** Drizzle ORM + MySQL (schema em `drizzle/schema.ts`); tRPC para API; dados de receitas, usuários, mensagens, comunidade, badges vêm do backend/DB.
-
-### LEI 4: TEMAS DINÂMICOS
-
-- **Status:** ⚠️ **PARCIAL**
-- **Dark/Light:** Sim — `ThemeContext`, `data-theme="light"` em theme.css, `ThemeProvider` em App (defaultTheme="light", switchable comentado). Variáveis `--theme-*` cobrem root e light. **Problema:** muitas páginas ignoram o tema e usam classes gray/white fixas, então a troca de tema não reflete corretamente em várias telas.
-
-### LEI 5: ESTADOS UI COMPLETOS
-
-- **Status:** ✅ **BOM**
-- **Loading/Error/Empty:** Loading (Spinner, Skeleton, Loader2, "Carregando...") e estados vazios ("Nenhuma receita", "Nenhuma conversa", "Faça login") presentes em App (RouterFallback), Home, Recipes, Badges, ConversationHistory, Community, etc. ErrorBoundary no App. Suspense + lazy para rotas. Cobertura razoável.
-
-### LEI 6: ESTRUTURA CANÔNICA
-
-- **Status:** ✅ **CONFORME**
-- **Padrão:** client/ (src: pages, components, contexts, hooks, lib, shared, \_core), server/ (\_core, routers), shared/, drizzle/, api/. Rotas centralizadas em ROUTES (shared/routes). SSOT de constantes. Estrutura clara e previsível.
+| Dimensão             | Nota (0-10) | Observações                                                                                                                                                                                                |
+| -------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Arquitetura          | 8/10        | Separação clara client/server/shared, tRPC + Drizzle + Express, SSOT em drizzle/schema.ts. Ponto de melhoria: api/ na raiz duplica lógica do server/                                                       |
+| Estilização / Design | 6/10        | Tema via CSS vars implementado. Dark/light switchable funcional. 5 violações residuais em shadcn/ui base (bg-black/50 em overlays — aceitáveis). 2 violações em app components corrigidas nesta auditoria. |
+| Dados & Backend      | 7/10        | tRPC + Drizzle sem mock data. MySQL via mysql2. Validação de env ao startup. Stripe + OAuth estruturados.                                                                                                  |
+| IA / Gamificação     | 7/10        | OpenAI via tRPC. XP/ranks/badges. Chat com streaming (streamdown). PWA.                                                                                                                                    |
+| Segurança            | 7/10        | Headers de segurança, rate limiting, Sentry, validação de env. CORS genérico (`*`) em produção é vulnerabilidade.                                                                                          |
+| Performance          | 7/10        | Vite + Workbox + cache de fonts/API. KaTeX no bundle (+1MB em assets).                                                                                                                                     |
+| Testes               | 7/10        | 40 testes passando, 2 skipped. Smoke tests para componentes críticos. Sem testes E2E.                                                                                                                      |
+| Documentação         | 8/10        | CLAUDE.md, README.md, docs/ARCHITECTURE.md, docs/THEME_SYSTEM_CANONICAL.md. Bem estruturado.                                                                                                               |
+| Governança AI        | 7/10        | CLAUDE.md com 6 regras claras. CI no GitHub Actions. Husky + lint-staged. Sem .cursorrules.                                                                                                                |
+| Deploy & CI/CD       | 5/10        | CI existe. **Deploy quebrado** por `framework: "vite"` no vercel.json (introduzido pelo Cursor). Corrigido nesta auditoria.                                                                                |
+| **MÉDIA**            | **6.9/10**  | **Deploy estava crítico; demais dimensões sólidas para a fase atual**                                                                                                                                      |
 
 ---
 
-## 3. FUNCIONALIDADES ESPECÍFICAS BROCRAFT
+## Detalhamento por Lei ALSHAM
 
-| Feature                 | Existe | Funciona                                                       | Qualidade                                                |
-| ----------------------- | ------ | -------------------------------------------------------------- | -------------------------------------------------------- |
-| IA Assistant            | Sim    | Sim (Forge/Manus API em server/\_core/llm.ts)                  | Boa — chat com IA, tools, cache Redis                    |
-| Gamificação (XP/Levels) | Sim    | Sim (users.xp, rank, tier, streak no schema)                   | Boa — ranks NOVATO → LEGEND, tiers FREE/MESTRE/CLUBE_BRO |
-| Receitas de fermentação | Sim    | Sim (recipes com category, difficulty, rajado/classico/mestre) | Boa — listagem, filtros, níveis                          |
-| Sistema de achievements | Sim    | Sim (badges, Badges.tsx, userRecipes)                          | Boa                                                      |
-| Chat com IA             | Sim    | Sim (ChatBox, AIChatBox, tRPC chat)                            | Boa                                                      |
-| Perfil do usuário       | Sim    | Sim (gamification.getProfile, ProfileCard)                     | Boa                                                      |
-| Database de receitas    | Sim    | Sim (Drizzle recipes + seed)                                   | Boa                                                      |
+### Lei 1 — Zero cores hardcoded
 
----
+**Nota: 6.5/10**
 
-## 4. SCORECARD
+Violações encontradas (pré-auditoria):
 
-| Dimensão             | Nota (0-10) | Observação                                                                                             |
-| -------------------- | ----------- | ------------------------------------------------------------------------------------------------------ |
-| Arquitetura          | 8,5         | client/server/shared/drizzle bem separados, tRPC, lazy routes                                          |
-| Estilização / Design | 4,0         | SSOT tema existe; violação massiva de cores hardcoded nas páginas                                      |
-| Dados & Backend      | 8,0         | Dados reais, Drizzle, MySQL, sem mocks                                                                 |
-| IA / Gamificação     | 8,0         | LLM Forge/Manus, XP/rank/tier/streak/badges implementados                                              |
-| Segurança            | 6,0         | .env.example correto; JWT/OAuth; sem CSP/X-Frame-Options explícitos no código                          |
-| Performance          | 7,5         | React.lazy em todas as rotas, PWA, cache API no Workbox                                                |
-| Testes               | 2,0         | Vitest configurado; **0 arquivos _.test._ / _.spec._**                                                 |
-| Documentação         | 7,0         | docs/ com ARCHITECTURE, THEME_SYSTEM_CANONICAL, MATRIZ_GENESIS, env-variables, etc.; **sem CLAUDE.md** |
-| Governança AI        | 6,0         | Sem .cursorrules; sem .github/copilot-instructions; pre-commit com lint + check:hardcoded + build      |
-| Deploy & CI/CD       | 6,0         | Vercel configurado; **sem GitHub Actions** (.github vazio)                                             |
-| **MÉDIA GERAL**      | **6,2/10**  | Projeto sólido em backend e features; arrasto por cores hardcoded, ausência de testes e CI             |
+- `bg-white` em `ChatBox.tsx:297` ✅ CORRIGIDA → `bg-card border-border`
+- `bg-blue-500/10` + `border-blue-500/30` + `text-blue-300` em `RecipeLevelModal.tsx:177` ✅ CORRIGIDA → `bg-primary/10 border-primary/30 text-muted-foreground`
 
----
+Violações residuais (shadcn/ui base — não modificar por regra ALSHAM):
 
-## 5. GAPS CRÍTICOS
+- `bg-black/50` em 4 overlays (drawer, dialog, alert-dialog, sheet) — padrão de modal; aceitável
+- `bg-white` em `slider.tsx` — componente base shadcn/ui
 
-### 🔴 CRÍTICO
+Hardcoded hex: 0 instâncias ✅
 
-1. **Cores hardcoded em ~25 arquivos** — Viola Lei 1 e quebra consistência com o tema canônico (theme.css/index.css). Páginas como Community, Recipes, Home, Privacy, Terms, UpgradeCancel, Badges, ConversationHistory e componentes (PricingSection, RecipeLevelModal, etc.) usam bg-gray-_, text-white, text-gray-_, border-gray-_ em vez de var(--theme-_) / classes do design system.
-2. **Zero testes automatizados** — Nenhum arquivo de teste; Vitest presente só no package.json. Risco alto para refatoração e regressões.
-3. **Ausência de CI/CD** — Nenhum workflow no .github; qualidade depende apenas de pre-commit local.
+### Lei 2 — Componentes UI padronizados
 
-### 🟡 IMPORTANTE
+**Nota: 8/10**
 
-1. **Sem CLAUDE.md / .cursorrules** — Dificulta onboarding de IA e padronização em novos arquivos.
-2. **Headers de segurança** — Nenhum Content-Security-Policy, X-Frame-Options ou HSTS configurado no código (Vercel pode injetar via dashboard; não auditado).
-3. **Tema switchable comentado** — ThemeProvider com `switchable` comentado; mesmo ativado, muitas telas não refletiriam o tema por causa das cores fixas.
+Uso consistente de shadcn/ui: Card, Button, Input, Select, Dialog, Skeleton, Tabs, etc. Sem componentes custom duplicando padrões existentes.
 
-### 🟢 DESEJÁVEL
+### Lei 3 — Dados 100% reais
 
-1. **README.md na raiz** — Ausente (há brocraft/README.md no repo; raiz sem README).
-2. **Hex de fallback em UpgradeSuccess** — getColorToken(..., "#d4af37") etc.; preferível usar só variáveis.
-3. **chart.tsx** — Classes Recharts com #ccc/#fff; poderiam usar variáveis de tema.
+**Nota: 8/10**
 
----
+Nenhum mock/fake/placeholder em componentes de produção. Dados via tRPC + Drizzle.
 
-## 6. PLANO DE MIGRAÇÃO PARA PADRÃO ALSHAM
+### Lei 4 — Temas dinâmicos
 
-### FASE 1 — Eliminar cores hardcoded (Lei 1)
+**Nota: 8/10**
 
-- Substituir em **todas** as páginas e componentes: `bg-gray-*` → `bg-[var(--theme-surface)]` ou tokens do index.css; `text-white`/`text-gray-*` → `text-[var(--theme-text-primary)]`/`text-[var(--theme-text-secondary)]`; `border-gray-*` → `border-[var(--theme-border)]`; etc. Usar o mapeamento do CLAUDE.md do ALSHAM 360° (bg-white → surface, gray-900 → bg, etc.).
-- Revisar UpgradeSuccess e chart.tsx para remover hex e usar apenas variáveis.
-- Rodar `pnpm run check:hardcoded` até zerar.
+`ThemeProvider` com `switchable` ativo em App.tsx. `[data-theme="dark"]` em theme.css. `next-themes` usado apenas em sonner.tsx (correto para toast theming).
 
-### FASE 2 — Testes e CI
+### Lei 5 — Estados UI completos
 
-- Adicionar testes Vitest para rotas críticas (auth, chat, gamificação) e componentes chave (ChatBox, RecipeCard).
-- Criar GitHub Actions: lint + check + build (e opcionalmente testes) em PR/push para main.
+**Nota: 7/10**
 
-### FASE 3 — Governança e documentação
+Skeleton e loading states nos componentes principais. Alguns componentes carecem de estado de erro explícito (páginas Recipes, Community).
 
-- Criar CLAUDE.md na raiz com regras ALSHAM (zero cores hardcoded, shadcn, dados reais, temas).
-- Adicionar .cursorrules ou .github/copilot-instructions com as mesmas diretrizes.
-- Garantir README.md na raiz com stack, como rodar e link para docs.
+### Lei 6 — Estrutura canônica
 
-### FASE 4 — Segurança e tema
+**Nota: 8/10**
 
-- Configurar headers de segurança (CSP, X-Frame-Options) via Vercel ou middleware.
-- Ativar `switchable` no ThemeProvider e validar todas as páginas em light/dark após Fase 1.
+- `client/src/` → frontend ✅
+- `server/` + `api/` → backend (api/index.ts re-exporta server/ para Vercel serverless — aceitável)
+- `shared/` → tipos compartilhados ✅
+- `drizzle/` → schema + migrations ✅
 
 ---
 
-## 7. VEREDICTO FINAL
+## Root Cause do Deploy Quebrado
 
-O **BROCRAFT** é um projeto **funcional e bem arquitetado** para um assistente de IA gamificado de fermentação: stack moderna (React 19, Vite 7, Drizzle, tRPC), dados reais em MySQL, sistema de temas definido em CSS (theme.css + index.css), componentes shadcn/ui padronizados, lazy loading e PWA. Foi construído com **Manus** (vite-plugin-manus-runtime, Forge API, ManusDialog) e integra bem IA, gamificação (XP, ranks, badges, streak), receitas por nível e comunidade.
+### Cronologia
 
-O **principal obstáculo** para o padrão ALSHAM é a **violação massiva da Lei 1 (zero cores hardcoded)**: centenas de classes Tailwind fixas (gray/white/blue) nas páginas e em vários componentes, apesar de existir um design system baseado em variáveis. Isso quebra consistência visual e troca de tema. Além disso, **não há testes** e **não há CI**, o que aumenta o risco em mudanças futuras.
+1. Estado original: `framework: null` + rewrite `/:path*` → deploy funcional mas 404 em rotas SPA
+2. Cursor commit `d714726`: mudou para `framework: "vite"` + rewrite `/(.*)`
+3. **Bug introduzido:** Vercel com `framework: "vite"` resolve `outputDirectory: "dist"` relativo ao Vite root (`client/`), buscando `client/dist/`. O build gera em `dist/` na raiz do projeto (via `outDir: path.resolve(import.meta.dirname, "dist")`). → **"No Output Directory named 'dist' found"**
 
-**Vale investir tempo** para: (1) migrar todas as telas para variáveis de tema (Fase 1), (2) introduzir testes e CI (Fase 2) e (3) documentar regras para IA (CLAUDE.md / .cursorrules). Com isso, o projeto fica alinhado ao padrão ALSHAM e mantém a base sólida que já tem.
+### A correção REAL do 404 era o rewrite
+
+- `/:path*` não captura a rota raiz `/`
+- `/(.*)` captura qualquer rota incluindo `/`
+- Mudança de rewrite: **correta**. Mudança de framework: **erro**.
+
+### Fix aplicado
+
+- `"framework": "vite"` → `"framework": null`
+- Rewrite `/(.*)` mantido
 
 ---
 
-_Auditoria READ-ONLY. Nenhum arquivo do projeto foi alterado exceto a criação deste relatório._
+## Manus Artifacts
+
+**Status: LIMPO ✅** — Nenhum resquício de ManusDialog, `__manus__/`, ou `vite-plugin-manus-runtime`.
+
+---
+
+## Próximos Passos Recomendados
+
+1. **CORS:** Substituir `Access-Control-Allow-Origin: *` por domínio específico em produção
+2. **Testes E2E:** Adicionar Playwright para fluxos críticos (auth, chat, upgrade)
+3. **Error states:** Revisar páginas Recipes e Community para estados de erro explícitos
+4. **slider.tsx:** Aguardar atualização shadcn/ui com suporte a `bg-background` no thumb
+
+---
+
+_Auditoria conduzida por Claude Code — Sonnet 4.6 | ALSHAM Standards v1.0_
