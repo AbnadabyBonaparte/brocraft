@@ -4,6 +4,6 @@ describe("ProfileCard (smoke)", () => {
   it("module exports correctly", async () => {
     const mod = await import("./ProfileCard");
     expect(mod).toBeDefined();
-    expect(typeof (mod.ProfileCard || mod.default)).toBe("function");
+    expect(typeof mod.ProfileCard).toBe("function");
   });
 });

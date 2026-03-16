@@ -294,7 +294,7 @@ export function ChatBox() {
       </div>
 
       {/* Input */}
-      <div className="p-3 md:p-4 bg-white border-t border-orange-200 space-y-2 flex-shrink-0">
+      <div className="p-3 md:p-4 bg-card border-t border-border space-y-2 flex-shrink-0">
         {/* Limite de mensagens warning */}
         {limitReached && (
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-2 md:p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-xs md:text-sm">
