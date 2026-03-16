@@ -11,7 +11,8 @@ describe("cn (utils)", () => {
   });
 
   it("aceita condicionais", () => {
-    expect(cn("a", false && "b", "c")).toBe("a c");
+    const includeB = false;
+    expect(cn("a", includeB && "b", "c")).toBe("a c");
   });
 
   it("aceita array e objeto", () => {
