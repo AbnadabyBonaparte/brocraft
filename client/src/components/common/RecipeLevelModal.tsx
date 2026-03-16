@@ -174,8 +174,8 @@ export function RecipeLevelModal({
         </div>
 
         {/* Info */}
-        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-          <p className="text-sm text-blue-300">
+        <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
+          <p className="text-sm text-muted-foreground">
             💡 <span className="font-semibold">Dica:</span> Você pode tentar
             novamente em outro nível depois. Escolha o nível que melhor se
             adequa ao seu conhecimento!
