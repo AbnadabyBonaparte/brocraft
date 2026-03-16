@@ -45,9 +45,9 @@ export default function UpgradeSuccess() {
       // Confetti burst
       const duration = 3000;
       const end = Date.now() + duration;
-      const gold = getColorToken("--color-primary", "#d4af37");
-      const ember = getColorToken("--color-orange-500", "#d67a2c");
-      const glow = getColorToken("--color-royal-500", "#b497ff");
+      const gold = getColorToken("--color-primary", "var(--theme-primary)");
+      const ember = getColorToken("--color-orange-500", "var(--theme-amber-500)");
+      const glow = getColorToken("--color-royal-500", "var(--theme-royal-500)");
       const confettiColors = [gold, ember, glow];
 
       const frame = () => {
