@@ -11,6 +11,14 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["server/**/*.test.ts", "server/**/*.spec.ts", "shared/**/*.test.ts", "client/src/lib/**/*.test.ts", "client/src/components/ui/button.smoke.test.tsx"],
+    include: [
+      "server/**/*.test.ts",
+      "server/**/*.spec.ts",
+      "shared/**/*.test.ts",
+      "client/src/lib/**/*.test.ts",
+      "client/src/shared/**/*.test.ts",
+      "client/src/components/**/*.smoke.test.tsx",
+      "client/src/components/ui/button.smoke.test.tsx",
+    ],
   },
 });

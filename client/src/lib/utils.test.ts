@@ -19,4 +19,12 @@ describe("cn (utils)", () => {
     expect(cn(["a", "b"])).toBe("a b");
     expect(cn({ a: true, b: false })).toBe("a");
   });
+
+  it("ignora undefined e null", () => {
+    expect(cn("a", undefined, "b", null)).toBe("a b");
+  });
+
+  it("retorna uma única classe quando só uma é passada", () => {
+    expect(cn("single")).toBe("single");
+  });
 });

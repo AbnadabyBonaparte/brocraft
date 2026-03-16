@@ -18,4 +18,16 @@ describe("Button (smoke)", () => {
     const classes = buttonVariants({ variant: "destructive", size: "default" });
     expect(classes).toContain("text-destructive-foreground");
   });
+
+  it("buttonVariants outline retorna classes de borda", () => {
+    const classes = buttonVariants({ variant: "outline", size: "default" });
+    expect(classes).toContain("border");
+  });
+
+  it("buttonVariants size sm e lg existem", () => {
+    const sm = buttonVariants({ variant: "default", size: "sm" });
+    const lg = buttonVariants({ variant: "default", size: "lg" });
+    expect(sm.length).toBeGreaterThan(0);
+    expect(lg.length).toBeGreaterThan(0);
+  });
 });

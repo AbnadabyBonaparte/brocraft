@@ -1,0 +1,9 @@
+import { describe, it, expect } from "vitest";
+
+describe("RankBadge (smoke)", () => {
+  it("module exports correctly", async () => {
+    const mod = await import("./RankBadge");
+    expect(mod).toBeDefined();
+    expect(typeof (mod.RankBadge || mod.default)).toBe("function");
+  });
+});
