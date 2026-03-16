@@ -24,3 +24,16 @@ Usei 6 critérios práticos alinhados ao dossiê (peso igual) e atribuí 0/50/10
 - **Script:** `pnpm suprema:check` (modo permissivo) ou `pnpm suprema:check:strict` (falha se houver cores hex ou ausência de `org_id`).
 - **O que cobre:** lint (`pnpm lint`), tipagem (`pnpm check`), testes (`pnpm test`), varredura de cores hex em `client/`, `server/`, `shared/`, `api/`, e alerta de ausência de `org_id` nas camadas de backend.
 - **Modo de adoção sugerido:** rodar em pre-commit/CI em modo permissivo para mapear débitos atuais; habilitar o modo strict após tratar cores e modelar `org_id` para multi-tenancy.
+
+---
+
+## Nota atualizada (pós Lei 1 + Fase 2 + Fase 3)
+
+Após conclusão da **Lei 1** (cores: button/badge com tokens, `check:hardcoded` zerado), **Fase 3** (governança) e **Fase 2** (testes Vitest):
+
+| Critério | Aderência anterior | Aderência atualizada | Motivo |
+| --- | --- | --- | --- |
+| Design system e tokens | 60% | **75%** | Lei 1 100%: componentes críticos com `text-primary-foreground`/`text-destructive-foreground`; script `check:hardcoded` bloqueia hex, gray-*, mock/fake/dummy no staged. |
+| Governança de código | 50% | **75%** | CI (GitHub Actions) com lint + check + build; `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md`; Vitest com 13 testes (dados, utils, smoke); `check:hardcoded` no pre-commit (bash). |
+
+**Resultado atualizado: ~42%** (média dos 6 critérios). Os demais critérios (stack, multitenancy, fluxo de dados, observabilidade) permanecem como no snapshot original. Em ambiente com bash (CI/Linux), `pnpm run check:hardcoded` roda no pre-commit; no Windows sem WSL o script é pulado.
