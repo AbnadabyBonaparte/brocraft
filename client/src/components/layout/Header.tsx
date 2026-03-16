@@ -1,8 +1,9 @@
 import { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, LogOut } from "lucide-react";
+import { ArrowLeft, LogOut, Moon, Sun } from "lucide-react";
 import { useLocation } from "wouter";
 import { ROUTES } from "@/shared/routes";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface HeaderProps {
   title: string;
@@ -20,6 +21,7 @@ export function Header({
   rightContent,
 }: HeaderProps) {
   const [, navigate] = useLocation();
+  const { theme, toggleTheme, switchable } = useTheme();
 
   return (
     <header className="bg-card border-b border-border sticky top-0 z-50 shadow-sm backdrop-blur">
@@ -45,6 +47,17 @@ export function Header({
 
           {/* Right Section */}
           <div className="flex items-center gap-3">
+            {switchable && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTheme}
+                aria-label={theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
+                className="text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              >
+                {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              </Button>
+            )}
             {rightContent}
             {onLogout && (
               <Button
