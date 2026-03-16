@@ -4,7 +4,6 @@ import react from "@vitejs/plugin-react";
 import fs from "node:fs";
 import path from "path";
 import { defineConfig } from "vite";
-import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
 import { VitePWA } from "vite-plugin-pwa";
 
 const pwaPlugin = VitePWA({
@@ -38,7 +37,7 @@ const pwaPlugin = VitePWA({
   },
 });
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), pwaPlugin];
+const plugins = [react(), tailwindcss(), jsxLocPlugin(), pwaPlugin];
 
 export default defineConfig({
   plugins,
@@ -59,15 +58,7 @@ export default defineConfig({
   },
   server: {
     host: true,
-    allowedHosts: [
-      ".manuspre.computer",
-      ".manus.computer",
-      ".manus-asia.computer",
-      ".manuscomputer.ai",
-      ".manusvm.computer",
-      "localhost",
-      "127.0.0.1",
-    ],
+    allowedHosts: ["localhost", "127.0.0.1"],
     fs: {
       strict: true,
       deny: ["**/.*"],

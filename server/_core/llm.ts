@@ -220,6 +220,7 @@ const normalizeToolChoice = (
   return toolChoice;
 };
 
+// TODO: Migrar de Manus Forge para Google Gemini ou OpenAI
 const resolveApiUrl = () =>
   ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
     ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
