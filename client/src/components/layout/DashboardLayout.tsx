@@ -14,7 +14,6 @@ import {
   Zap,
   TrendingUp,
   History,
-  Crown,
   MessageSquare,
   ExternalLink,
 } from "lucide-react";
@@ -40,7 +39,12 @@ const MENU_ITEMS = [
   { icon: History, label: "Histórico", href: ROUTES.HISTORY },
   { icon: Award, label: "Badges", href: ROUTES.BADGES },
   { icon: Users, label: "Comunidade", href: ROUTES.COMMUNITY },
-  { icon: Settings, label: "Configurações", href: ROUTES.SETTINGS, disabled: true },
+  {
+    icon: Settings,
+    label: "Configurações",
+    href: ROUTES.SETTINGS,
+    disabled: true,
+  },
 ];
 
 export function DashboardLayout({
@@ -138,7 +142,7 @@ export function DashboardLayout({
           <p className="text-xs text-muted-foreground uppercase font-bold tracking-widest px-3 mb-4">
             Navegação
           </p>
-          {MENU_ITEMS.map((item) => {
+          {MENU_ITEMS.map(item => {
             const isActive = location === item.href;
             const Icon = item.icon;
 
@@ -146,7 +150,7 @@ export function DashboardLayout({
               <a
                 key={item.href}
                 href={item.disabled ? undefined : item.href}
-                onClick={(e) => {
+                onClick={e => {
                   if (item.disabled) e.preventDefault();
                   setSidebarOpen(false);
                 }}
@@ -157,8 +161,8 @@ export function DashboardLayout({
                     isActive
                       ? "bg-gradient-to-r from-primary/25 to-amber-600/25 text-primary border-l-4 border-primary shadow-lg shadow-primary/20"
                       : item.disabled
-                      ? "text-muted-foreground cursor-not-allowed opacity-40"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                        ? "text-muted-foreground cursor-not-allowed opacity-40"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   }`}
                   disabled={item.disabled}
                 >
@@ -271,12 +275,12 @@ export function DashboardLayout({
       </div>
 
       {/* Mobile Overlay */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-background/80 lg:hidden z-40 backdrop-blur-sm"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-      </div>
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-background/80 lg:hidden z-40 backdrop-blur-sm"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+    </div>
   );
 }

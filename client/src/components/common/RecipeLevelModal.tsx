@@ -70,7 +70,9 @@ export function RecipeLevelModal({
   onSelectLevel,
   isLoading = false,
 }: RecipeLevelModalProps) {
-  const [selectedLevel, setSelectedLevel] = useState<"RAJADO" | "CLASSICO" | "MESTRE" | null>(null);
+  const [selectedLevel, setSelectedLevel] = useState<
+    "RAJADO" | "CLASSICO" | "MESTRE" | null
+  >(null);
 
   const handleSelect = (level: "RAJADO" | "CLASSICO" | "MESTRE") => {
     setSelectedLevel(level);
@@ -79,18 +81,19 @@ export function RecipeLevelModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl bg-gray-900 border-gray-800">
+      <DialogContent className="max-w-2xl bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-black text-white">
+          <DialogTitle className="text-2xl font-black text-foreground">
             Escolha seu Nível
           </DialogTitle>
-          <DialogDescription className="text-gray-400 text-base">
-            Receita: <span className="font-bold text-orange-400">{recipeName}</span>
+          <DialogDescription className="text-muted-foreground text-base">
+            Receita:{" "}
+            <span className="font-bold text-orange-400">{recipeName}</span>
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-6">
-          {LEVELS.map((level) => {
+          {LEVELS.map(level => {
             const Icon = level.icon;
             const isSelected = selectedLevel === level.id;
 
@@ -100,8 +103,8 @@ export function RecipeLevelModal({
                 onClick={() => !isLoading && handleSelect(level.id as any)}
                 className={`cursor-pointer transition-all border-2 overflow-hidden ${
                   isSelected
-                    ? "border-orange-500 bg-gray-800/50"
-                    : "border-gray-700 bg-gray-800/30 hover:border-gray-600"
+                    ? "border-primary bg-card"
+                    : "border-border bg-card/80 hover:border-muted-foreground"
                 }`}
               >
                 {/* Header */}
@@ -111,7 +114,7 @@ export function RecipeLevelModal({
                   <div className="absolute inset-0 opacity-20">
                     <Icon className="absolute top-2 right-2 h-12 w-12" />
                   </div>
-                  <div className="relative h-full flex flex-col justify-between p-4 text-white">
+                  <div className="relative h-full flex flex-col justify-between p-4 text-primary-foreground">
                     <h3 className="text-lg font-black">{level.name}</h3>
                     <p className="text-xs font-semibold opacity-90">
                       {level.description}
@@ -125,8 +128,12 @@ export function RecipeLevelModal({
                   <div className="space-y-2">
                     {level.features.map((feature, idx) => (
                       <div key={idx} className="flex items-start gap-2">
-                        <span className="text-orange-400 font-bold mt-0.5">✓</span>
-                        <span className="text-sm text-gray-300">{feature}</span>
+                        <span className="text-orange-400 font-bold mt-0.5">
+                          ✓
+                        </span>
+                        <span className="text-sm text-primary-foreground/90">
+                          {feature}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -147,8 +154,8 @@ export function RecipeLevelModal({
                     disabled={isLoading}
                     className={`w-full font-bold py-2 rounded-lg transition-all ${
                       isSelected
-                        ? "bg-gradient-to-r from-orange-600 to-red-600 text-white"
-                        : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                        ? "bg-gradient-to-r from-primary to-destructive text-primary-foreground"
+                        : "bg-muted text-foreground hover:bg-muted/80"
                     }`}
                   >
                     {isLoading && selectedLevel === level.id ? (
@@ -157,9 +164,7 @@ export function RecipeLevelModal({
                         Iniciando...
                       </>
                     ) : (
-                      <>
-                        {isSelected ? "✓ Selecionado" : "Escolher"}
-                      </>
+                      <>{isSelected ? "✓ Selecionado" : "Escolher"}</>
                     )}
                   </Button>
                 </div>
@@ -171,7 +176,9 @@ export function RecipeLevelModal({
         {/* Info */}
         <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
           <p className="text-sm text-blue-300">
-            💡 <span className="font-semibold">Dica:</span> Você pode tentar novamente em outro nível depois. Escolha o nível que melhor se adequa ao seu conhecimento!
+            💡 <span className="font-semibold">Dica:</span> Você pode tentar
+            novamente em outro nível depois. Escolha o nível que melhor se
+            adequa ao seu conhecimento!
           </p>
         </div>
       </DialogContent>

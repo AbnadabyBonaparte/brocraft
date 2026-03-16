@@ -51,7 +51,7 @@ export function serveStatic(app: Express) {
   // Em produção local, os arquivos estão em dist/ (na raiz do projeto)
   // Em desenvolvimento, também ficam em dist/ após o build
   const distPath = path.resolve(import.meta.dirname, "../..", "dist");
-  
+
   if (!fs.existsSync(distPath)) {
     console.error(
       `[BROCRAFT] Could not find the build directory: ${distPath}, make sure to build the client first`

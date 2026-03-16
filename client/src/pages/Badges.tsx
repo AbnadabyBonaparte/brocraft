@@ -21,25 +21,31 @@ export default function Badges() {
     retry: 2,
   });
 
-  const allBadgesQuery = trpc.gamification.getAllBadgeDefinitions.useQuery(undefined, {
-    refetchInterval: 30000,
-    retry: 2,
-  });
+  const allBadgesQuery = trpc.gamification.getAllBadgeDefinitions.useQuery(
+    undefined,
+    {
+      refetchInterval: 30000,
+      retry: 2,
+    }
+  );
 
   const earnedBadgeTypes = new Set(
-    userBadgesQuery.data?.map((b) => b.type) || []
+    userBadgesQuery.data?.map(b => b.type) || []
   );
 
   const allBadges = allBadgesQuery.data || [];
   const earnedBadges = userBadgesQuery.data || [];
   const lockedBadges = useFilteredData(allBadgesQuery.data, {
-    customFilter: (badge) => !earnedBadgeTypes.has(badge.type),
+    customFilter: badge => !earnedBadgeTypes.has(badge.type),
     dependencies: [earnedBadges.length],
   });
 
   const isLoadingAny =
-    profileQuery.isLoading || userBadgesQuery.isLoading || allBadgesQuery.isLoading;
-  const isErrorAny = profileQuery.isError || userBadgesQuery.isError || allBadgesQuery.isError;
+    profileQuery.isLoading ||
+    userBadgesQuery.isLoading ||
+    allBadgesQuery.isLoading;
+  const isErrorAny =
+    profileQuery.isError || userBadgesQuery.isError || allBadgesQuery.isError;
 
   const handleRetry = () => {
     profileQuery.refetch();
@@ -49,8 +55,10 @@ export default function Badges() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-950 to-gray-900">
-        <p className="text-gray-400">Por favor, faça login para ver seus badges.</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted">
+        <p className="text-muted-foreground">
+          Por favor, faça login para ver seus badges.
+        </p>
       </div>
     );
   }
@@ -70,23 +78,25 @@ export default function Badges() {
             <Award className="h-8 w-8 text-orange-500" />
             Suas Conquistas
           </h1>
-          <p className="text-gray-400 text-lg">
+          <p className="text-muted-foreground text-lg">
             Desbloqueie badges completando desafios no BROCRAFT!
           </p>
         </div>
 
         {isErrorAny && (
-          <Card className="bg-red-900/20 border-red-500/30 p-6 flex items-start gap-4">
-            <AlertCircle className="h-6 w-6 text-red-400" />
+          <Card className="bg-destructive/10 border-destructive/30 p-6 flex items-start gap-4">
+            <AlertCircle className="h-6 w-6 text-destructive" />
             <div className="space-y-2">
-              <p className="text-red-200 font-semibold">Erro ao carregar seus dados de gamificação.</p>
-              <p className="text-red-100/80 text-sm">
+              <p className="text-destructive font-semibold">
+                Erro ao carregar seus dados de gamificação.
+              </p>
+              <p className="text-foreground/80 text-sm">
                 Verifique sua conexão e tente novamente para ver seu progresso.
               </p>
               <Button
                 size="sm"
                 variant="outline"
-                className="border-red-400/50 text-red-100 hover:bg-red-500/10"
+                className="border-destructive/50 text-destructive hover:bg-destructive/10"
                 onClick={handleRetry}
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
@@ -110,26 +120,26 @@ export default function Badges() {
               </p>
             )}
           </Card>
-          <Card className="bg-gray-800/30 border-gray-700/50 p-4">
-            <p className="text-xs text-gray-400 uppercase font-bold mb-1">
+          <Card className="bg-card/80 border-border p-4">
+            <p className="text-xs text-muted-foreground uppercase font-bold mb-1">
               Total Disponível
             </p>
             {isLoadingAny ? (
-              <Skeleton className="h-10 w-16 bg-gray-700" />
+              <Skeleton className="h-10 w-16 bg-muted" />
             ) : (
-              <p className="text-3xl font-black text-gray-300">
+              <p className="text-3xl font-black text-foreground">
                 {allBadges.length}
               </p>
             )}
           </Card>
-          <Card className="bg-gray-800/30 border-gray-700/50 p-4">
-            <p className="text-xs text-gray-400 uppercase font-bold mb-1">
+          <Card className="bg-card/80 border-border p-4">
+            <p className="text-xs text-muted-foreground uppercase font-bold mb-1">
               Progresso
             </p>
             {isLoadingAny ? (
-              <Skeleton className="h-10 w-24 bg-blue-500/30" />
+              <Skeleton className="h-10 w-24 bg-primary/30" />
             ) : (
-              <p className="text-3xl font-black text-blue-400">
+              <p className="text-3xl font-black text-primary">
                 {allBadges.length > 0
                   ? Math.round((earnedBadges.length / allBadges.length) * 100)
                   : 0}
@@ -137,14 +147,14 @@ export default function Badges() {
               </p>
             )}
           </Card>
-          <Card className="bg-gray-800/30 border-gray-700/50 p-4">
-            <p className="text-xs text-gray-400 uppercase font-bold mb-1">
+          <Card className="bg-card/80 border-border p-4">
+            <p className="text-xs text-muted-foreground uppercase font-bold mb-1">
               Faltam
             </p>
             {isLoadingAny ? (
-              <Skeleton className="h-10 w-16 bg-purple-500/30" />
+              <Skeleton className="h-10 w-16 bg-primary/30" />
             ) : (
-              <p className="text-3xl font-black text-purple-400">
+              <p className="text-3xl font-black text-primary">
                 {Math.max(allBadges.length - earnedBadges.length, 0)}
               </p>
             )}
@@ -162,13 +172,17 @@ export default function Badges() {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : userBadgesQuery.isError ? (
-            <Card className="bg-red-900/20 border-red-500/30 p-6 text-center">
-              <p className="text-red-200 font-semibold mb-2">Erro ao carregar badges conquistados.</p>
-              <p className="text-red-100/80 text-sm">Tente novamente em instantes.</p>
+            <Card className="bg-destructive/10 border-destructive/30 p-6 text-center">
+              <p className="text-destructive font-semibold mb-2">
+                Erro ao carregar badges conquistados.
+              </p>
+              <p className="text-foreground/80 text-sm">
+                Tente novamente em instantes.
+              </p>
               <Button
                 variant="outline"
                 size="sm"
-                className="mt-4 border-red-400/50 text-red-100 hover:bg-red-500/10"
+                className="mt-4 border-destructive/50 text-destructive hover:bg-destructive/10"
                 onClick={handleRetry}
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
@@ -177,14 +191,16 @@ export default function Badges() {
             </Card>
           ) : earnedBadges.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {earnedBadges.map((badge) => (
+              {earnedBadges.map(badge => (
                 <Card
                   key={badge.id}
                   className="bg-gradient-to-br from-card/70 to-card/50 border-border/60 overflow-hidden hover:border-primary/40 transition-all"
                 >
                   <div
                     className="h-2"
-                    style={{ backgroundColor: badge.color || "var(--color-primary)" }}
+                    style={{
+                      backgroundColor: badge.color || "var(--color-primary)",
+                    }}
                   />
                   <div className="p-6">
                     <div className="flex items-start gap-4">
@@ -217,23 +233,23 @@ export default function Badges() {
                 </Card>
               ))}
             </div>
-            ) : (
-              <Card className="bg-card/60 border-border/60 p-8 text-center">
-                <Award className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground text-lg">
-                  Você ainda não conquistou nenhum badge.
-                </p>
-                <p className="text-muted-foreground text-sm mt-2">
-                  Continue usando o BROCRAFT para desbloquear conquistas!
-                </p>
-                <Button
-                  className="mt-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
-                  onClick={() => (window.location.href = "/recipes")}
-                >
-                  Explorar desafios
-                </Button>
-              </Card>
-            )}
+          ) : (
+            <Card className="bg-card/60 border-border/60 p-8 text-center">
+              <Award className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground text-lg">
+                Você ainda não conquistou nenhum badge.
+              </p>
+              <p className="text-muted-foreground text-sm mt-2">
+                Continue usando o BROCRAFT para desbloquear conquistas!
+              </p>
+              <Button
+                className="mt-4 bg-gradient-to-r from-primary to-destructive hover:opacity-90"
+                onClick={() => (window.location.href = "/recipes")}
+              >
+                Explorar desafios
+              </Button>
+            </Card>
+          )}
         </div>
 
         {/* Badges Bloqueados */}
@@ -248,13 +264,17 @@ export default function Badges() {
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : allBadgesQuery.isError ? (
-            <Card className="bg-red-900/20 border-red-500/30 p-6 text-center">
-              <p className="text-red-200 font-semibold mb-2">Erro ao carregar badges disponíveis.</p>
-              <p className="text-red-100/80 text-sm">Tente novamente em instantes.</p>
+            <Card className="bg-destructive/10 border-destructive/30 p-6 text-center">
+              <p className="text-destructive font-semibold mb-2">
+                Erro ao carregar badges disponíveis.
+              </p>
+              <p className="text-foreground/80 text-sm">
+                Tente novamente em instantes.
+              </p>
               <Button
                 size="sm"
                 variant="outline"
-                className="mt-4 border-red-400/50 text-red-100 hover:bg-red-500/10"
+                className="mt-4 border-destructive/50 text-destructive hover:bg-destructive/10"
                 onClick={handleRetry}
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
@@ -263,7 +283,7 @@ export default function Badges() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {lockedBadges.map((badge) => (
+              {lockedBadges.map(badge => (
                 <Card
                   key={badge.type}
                   className="bg-card/50 border-border/60 overflow-hidden opacity-60 hover:opacity-80 transition-all"
@@ -292,19 +312,18 @@ export default function Badges() {
             </div>
           )}
 
-            {lockedBadges.length === 0 && (
-              <Card className="bg-gradient-to-br from-primary/20 to-amber-600/20 border-primary/30 p-8 text-center">
-                <p className="text-primary text-lg font-bold">
-                  🎉 Parabéns! Você conquistou todos os badges!
-                </p>
-                <p className="text-primary/80 text-sm mt-2">
-                  Você é um verdadeiro Mestre Fermentador!
-                </p>
-              </Card>
-            )}
+          {lockedBadges.length === 0 && (
+            <Card className="bg-gradient-to-br from-primary/20 to-amber-600/20 border-primary/30 p-8 text-center">
+              <p className="text-primary text-lg font-bold">
+                🎉 Parabéns! Você conquistou todos os badges!
+              </p>
+              <p className="text-primary/80 text-sm mt-2">
+                Você é um verdadeiro Mestre Fermentador!
+              </p>
+            </Card>
+          )}
         </div>
       </div>
     </DashboardLayout>
   );
 }
-

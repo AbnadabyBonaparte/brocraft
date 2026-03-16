@@ -1,21 +1,19 @@
 /**
  * Redis Cache Client (Upstash)
- * 
+ *
  * Usado para cachear respostas do LLM e economizar custos.
  * Economia estimada: 60-70% em chamadas de IA.
- * 
+ *
  * Configuração:
  * - UPSTASH_REDIS_URL: URL do Redis (ex: https://xxx.upstash.io)
  * - UPSTASH_REDIS_TOKEN: Token de autenticação
- * 
+ *
  * Se as variáveis não estiverem configuradas, o cache é desabilitado
  * silenciosamente (graceful degradation).
  */
 
-import { ENV } from "./env";
-
-// Tipos
-interface CacheEntry<T> {
+// Tipos (CacheEntry reservado para uso futuro)
+interface _CacheEntry<T> {
   data: T;
   timestamp: number;
   ttl: number;
@@ -39,7 +37,9 @@ class UpstashRedisClient {
     if (this.enabled) {
       console.log("[BROCRAFT][Redis] ✅ Cache habilitado (Upstash)");
     } else {
-      console.log("[BROCRAFT][Redis] ⚠️ Cache desabilitado (variáveis não configuradas)");
+      console.log(
+        "[BROCRAFT][Redis] ⚠️ Cache desabilitado (variáveis não configuradas)"
+      );
     }
   }
 
@@ -69,7 +69,10 @@ class UpstashRedisClient {
       return data.result;
     } catch (error) {
       // Graceful degradation - log mas não quebra o app
-      console.error("[BROCRAFT][Redis] ❌ Error (cache disabled):", error instanceof Error ? error.message : error);
+      console.error(
+        "[BROCRAFT][Redis] ❌ Error (cache disabled):",
+        error instanceof Error ? error.message : error
+      );
       return null;
     }
   }
@@ -85,9 +88,20 @@ class UpstashRedisClient {
     }
   }
 
-  async set(key: string, value: any, ttlSeconds: number = CACHE_TTL_SECONDS): Promise<boolean> {
-    const serialized = typeof value === "string" ? value : JSON.stringify(value);
-    const result = await this.request(["SET", key, serialized, "EX", ttlSeconds.toString()]);
+  async set(
+    key: string,
+    value: any,
+    ttlSeconds: number = CACHE_TTL_SECONDS
+  ): Promise<boolean> {
+    const serialized =
+      typeof value === "string" ? value : JSON.stringify(value);
+    const result = await this.request([
+      "SET",
+      key,
+      serialized,
+      "EX",
+      ttlSeconds.toString(),
+    ]);
     return result === "OK";
   }
 
@@ -119,20 +133,22 @@ export function hashPrompt(messages: any[]): string {
   let hash = 0;
   for (let i = 0; i < content.length; i++) {
     const char = content.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32bit integer
   }
   return Math.abs(hash).toString(36);
 }
 
 // Funções de cache para LLM
-export async function getCachedLLMResponse(messages: any[]): Promise<any | null> {
+export async function getCachedLLMResponse(
+  messages: any[]
+): Promise<any | null> {
   const client = getRedisClient();
   if (!client.isEnabled()) return null;
 
   const key = `${CACHE_PREFIX}${hashPrompt(messages)}`;
   const cached = await client.get<any>(key);
-  
+
   if (cached) {
     // Não logar HIT em produção para evitar spam
     if (process.env.NODE_ENV !== "production") {
@@ -140,7 +156,7 @@ export async function getCachedLLMResponse(messages: any[]): Promise<any | null>
     }
     return cached;
   }
-  
+
   // Não logar MISS em produção para evitar spam
   if (process.env.NODE_ENV !== "production") {
     console.log("[BROCRAFT][Redis] Cache MISS");
@@ -148,7 +164,10 @@ export async function getCachedLLMResponse(messages: any[]): Promise<any | null>
   return null;
 }
 
-export async function cacheLLMResponse(messages: any[], response: any): Promise<void> {
+export async function cacheLLMResponse(
+  messages: any[],
+  response: any
+): Promise<void> {
   const client = getRedisClient();
   if (!client.isEnabled()) return;
 
@@ -168,7 +187,7 @@ export type CacheStats = {
   hitRate: string;
 };
 
-let stats = { hits: 0, misses: 0 };
+const stats = { hits: 0, misses: 0 };
 
 export function recordCacheHit(): void {
   stats.hits++;
@@ -180,8 +199,9 @@ export function recordCacheMiss(): void {
 
 export function getCacheStats(): CacheStats {
   const total = stats.hits + stats.misses;
-  const hitRate = total > 0 ? ((stats.hits / total) * 100).toFixed(1) + "%" : "N/A";
-  
+  const hitRate =
+    total > 0 ? ((stats.hits / total) * 100).toFixed(1) + "%" : "N/A";
+
   return {
     enabled: getRedisClient().isEnabled(),
     hits: stats.hits,
@@ -189,4 +209,3 @@ export function getCacheStats(): CacheStats {
     hitRate,
   };
 }
-

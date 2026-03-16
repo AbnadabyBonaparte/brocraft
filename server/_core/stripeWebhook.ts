@@ -1,6 +1,6 @@
 /**
  * Stripe Webhook Handler for BROCRAFT
- * 
+ *
  * Handles Stripe events like checkout.session.completed
  * to update user tiers after successful payment.
  */
@@ -26,7 +26,9 @@ stripeWebhookRouter.post("/webhook", async (req: Request, res: Response) => {
   // O body deve ser raw (Buffer)
   const rawBody = (req as any).rawBody;
   if (!rawBody) {
-    console.error("[BROCRAFT][Stripe] ❌ Missing raw body - ensure rawBodyMiddleware is applied");
+    console.error(
+      "[BROCRAFT][Stripe] ❌ Missing raw body - ensure rawBodyMiddleware is applied"
+    );
     return res.status(400).json({ error: "Missing raw body" });
   }
 
@@ -35,8 +37,13 @@ stripeWebhookRouter.post("/webhook", async (req: Request, res: Response) => {
   try {
     event = constructWebhookEvent(rawBody, signature);
   } catch (err: any) {
-    console.error("[BROCRAFT][Stripe] ❌ Signature verification failed:", err.message);
-    return res.status(400).json({ error: `Webhook signature verification failed: ${err.message}` });
+    console.error(
+      "[BROCRAFT][Stripe] ❌ Signature verification failed:",
+      err.message
+    );
+    return res
+      .status(400)
+      .json({ error: `Webhook signature verification failed: ${err.message}` });
   }
 
   console.log(`[BROCRAFT][Stripe] 📩 Received event: ${event.type}`);
@@ -44,12 +51,16 @@ stripeWebhookRouter.post("/webhook", async (req: Request, res: Response) => {
   try {
     switch (event.type) {
       case "checkout.session.completed": {
-        await handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session);
+        await handleCheckoutSessionCompleted(
+          event.data.object as Stripe.Checkout.Session
+        );
         break;
       }
 
       case "customer.subscription.deleted": {
-        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+        await handleSubscriptionDeleted(
+          event.data.object as Stripe.Subscription
+        );
         break;
       }
 
@@ -67,7 +78,9 @@ stripeWebhookRouter.post("/webhook", async (req: Request, res: Response) => {
     console.error("[BROCRAFT][Stripe] ❌ Error processing event:", error);
     // Retornar 200 mesmo com erro para Stripe não reenviar
     // (o erro é interno, não do Stripe)
-    res.status(200).json({ received: true, error: "Internal processing error" });
+    res
+      .status(200)
+      .json({ received: true, error: "Internal processing error" });
   }
 });
 
@@ -75,7 +88,9 @@ stripeWebhookRouter.post("/webhook", async (req: Request, res: Response) => {
  * Handler para checkout.session.completed
  * Ativação do tier após pagamento bem-sucedido
  */
-async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
+async function handleCheckoutSessionCompleted(
+  session: Stripe.Checkout.Session
+) {
   console.log("[BROCRAFT][Stripe] 🛒 Processing checkout.session.completed");
 
   // Extrair dados da sessão
@@ -87,11 +102,14 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   // Validar tier antes de aplicar
   const validTiers = ["MESTRE", "CLUBE_BRO"];
   if (!userId || !tier || !validTiers.includes(tier)) {
-    console.error("[BROCRAFT][Stripe] ❌ Missing or invalid userId/tier in session metadata", {
-      userId,
-      tier,
-      sessionId: session.id,
-    });
+    console.error(
+      "[BROCRAFT][Stripe] ❌ Missing or invalid userId/tier in session metadata",
+      {
+        userId,
+        tier,
+        sessionId: session.id,
+      }
+    );
     return;
   }
 
@@ -104,7 +122,10 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   // 1. Buscar usuário para obter orgId
   const user = await db.getUserById(userIdNum);
   if (!user || !user.orgId) {
-    console.error("[BROCRAFT][Stripe] ❌ User not found or missing orgId:", userIdNum);
+    console.error(
+      "[BROCRAFT][Stripe] ❌ User not found or missing orgId:",
+      userIdNum
+    );
     // Fallback: usar default org (não ideal, mas funcional para migração)
     const defaultOrgId = await db.getDefaultOrgId();
     await db.updatePurchaseStatus(
@@ -114,7 +135,9 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       customerId
     );
     await db.updateUserTier(userIdNum, defaultOrgId, tier);
-    console.log(`[BROCRAFT][Stripe] ✅ Used default orgId for user ${userIdNum}`);
+    console.log(
+      `[BROCRAFT][Stripe] ✅ Used default orgId for user ${userIdNum}`
+    );
     return;
   }
 
@@ -132,7 +155,9 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   await db.updateUserTier(userIdNum, orgId, tier);
 
   // [BROCRAFT][EVENT] Telemetria de upgrade de tier
-  console.log(`[BROCRAFT][EVENT] type="tier_upgrade" userId=${userIdNum} newTier="${tier}" stripeSessionId="${session.id}"`);
+  console.log(
+    `[BROCRAFT][EVENT] type="tier_upgrade" userId=${userIdNum} newTier="${tier}" stripeSessionId="${session.id}"`
+  );
   console.log(`[BROCRAFT][Stripe] ✅ User ${userIdNum} upgraded to ${tier}`);
 }
 
@@ -144,10 +169,12 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   console.log("[BROCRAFT][Stripe] 🚫 Processing customer.subscription.deleted");
 
   const customerId = subscription.customer as string;
-  
+
   // Buscar purchase pelo stripeCustomerId e fazer downgrade
-  console.warn(`[BROCRAFT][Stripe] ⚠️ Subscription ${subscription.id} for customer ${customerId} was deleted`);
-  
+  console.warn(
+    `[BROCRAFT][Stripe] ⚠️ Subscription ${subscription.id} for customer ${customerId} was deleted`
+  );
+
   // TODO: [BETA] Implementar downgrade automático quando assinatura é cancelada
   // Prioridade: MÉDIA - Precisa definir regra de negócio (downgrade imediato vs fim do período)
   // await db.downgradeUserByCustomerId(customerId);
@@ -159,12 +186,13 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
  */
 async function handlePaymentFailed(invoice: Stripe.Invoice) {
   console.warn("[BROCRAFT][Stripe] ❌ Processing invoice.payment_failed");
-  
+
   const customerId = invoice.customer as string;
-  console.warn(`[BROCRAFT][Stripe] ⚠️ Payment failed for customer ${customerId}, invoice ${invoice.id}`);
-  
+  console.warn(
+    `[BROCRAFT][Stripe] ⚠️ Payment failed for customer ${customerId}, invoice ${invoice.id}`
+  );
+
   // TODO: [BETA] Implementar notificação ao usuário sobre falha de pagamento
   // Prioridade: ALTA - Usuário precisa saber que o pagamento falhou
   // Opções: email, toast no app, ou flag no banco
 }
-

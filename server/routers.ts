@@ -1,8 +1,8 @@
-import { 
-  COOKIE_NAME, 
-  LEADERBOARD_TIMEFRAMES, 
-  COMMUNITY_CATEGORY_VALUES, 
-  VOTE_TYPES 
+import {
+  COOKIE_NAME,
+  LEADERBOARD_TIMEFRAMES,
+  COMMUNITY_CATEGORY_VALUES,
+  VOTE_TYPES,
 } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -11,7 +11,11 @@ import { z } from "zod";
 import * as db from "./db";
 import { invokeLLM } from "./_core/llm";
 import { getCacheStats } from "./_core/redis";
-import { createCheckoutSessionForTier, isStripeConfigured, STRIPE_PLANS, type TierType } from "./_core/stripe";
+import {
+  createCheckoutSessionForTier,
+  isStripeConfigured,
+  STRIPE_PLANS,
+} from "./_core/stripe";
 import { TRPCError } from "@trpc/server";
 
 const BROCRAFT_SYSTEM_PROMPT = `Você é BROCRAFT v∞, o irmão mais velho especialista em fermentação, cerveja, charcutaria, queijos e destilados educacionais.
@@ -43,12 +47,12 @@ Status inicial: "Carga aceita. BROCRAFT v∞ online. Fogo aceso. Fermento vivo."
 
 export const appRouter = router({
   system: systemRouter,
-  
+
   // Cache Status (Admin)
   cacheStatus: publicProcedure.query(() => {
     return getCacheStats();
   }),
-  
+
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
@@ -72,20 +76,25 @@ export const appRouter = router({
         try {
           // Get user profile for context
           const userProfile = await db.getUserProfile(userId, orgId);
-          
+
           // =============================================
           // PAYWALL: Verificar limite de mensagens diárias
           // =============================================
           const tier = userProfile.tier as keyof typeof db.TIER_LIMITS;
           const tierLimits = db.TIER_LIMITS[tier] || db.TIER_LIMITS.FREE;
-          
+
           if (tierLimits.dailyMessages !== Infinity) {
-            const messagesToday = await db.countUserMessagesToday(userId, orgId);
-            
+            const messagesToday = await db.countUserMessagesToday(
+              userId,
+              orgId
+            );
+
             if (messagesToday >= tierLimits.dailyMessages) {
               // [BROCRAFT][EVENT] Telemetria de limite de mensagens atingido
-              console.log(`[BROCRAFT][EVENT] type="limit_reached" userId=${userId} orgId=${orgId} tier="${tier}" dailyLimit=${tierLimits.dailyMessages} messagesUsed=${messagesToday}`);
-              
+              console.log(
+                `[BROCRAFT][EVENT] type="limit_reached" userId=${userId} orgId=${orgId} tier="${tier}" dailyLimit=${tierLimits.dailyMessages} messagesUsed=${messagesToday}`
+              );
+
               throw new TRPCError({
                 code: "FORBIDDEN",
                 message: `Você atingiu o limite de ${tierLimits.dailyMessages} mensagens diárias do plano ${tier}. Faça upgrade para continuar conversando!`,
@@ -93,7 +102,7 @@ export const appRouter = router({
             }
           }
           // =============================================
-          
+
           // Save user message
           await db.saveMessage(userId, orgId, "user", input.message);
 
@@ -114,25 +123,36 @@ export const appRouter = router({
           });
 
           const assistantMessageContent = response.choices[0]?.message?.content;
-          const assistantMessage = typeof assistantMessageContent === "string" 
-            ? assistantMessageContent 
-            : "Erro ao gerar resposta";
-          
+          const assistantMessage =
+            typeof assistantMessageContent === "string"
+              ? assistantMessageContent
+              : "Erro ao gerar resposta";
+
           // Save assistant message
           const xpGained = 10; // Base XP for chat
-          await db.saveMessage(userId, orgId, "assistant", assistantMessage, xpGained);
-          
+          await db.saveMessage(
+            userId,
+            orgId,
+            "assistant",
+            assistantMessage,
+            xpGained
+          );
+
           // Add XP and check for rank up
           const xpResult = await db.addXP(userId, orgId, xpGained);
-          
+
           // Check and award badges
           const badgeResult = await db.checkAndAwardBadges(userId, orgId);
 
           // Retornar info de limite restante
-          const newMessageCount = await db.countUserMessagesToday(userId, orgId);
-          const messagesRemaining = tierLimits.dailyMessages === Infinity 
-            ? null 
-            : tierLimits.dailyMessages - newMessageCount;
+          const newMessageCount = await db.countUserMessagesToday(
+            userId,
+            orgId
+          );
+          const messagesRemaining =
+            tierLimits.dailyMessages === Infinity
+              ? null
+              : tierLimits.dailyMessages - newMessageCount;
 
           return {
             response: assistantMessage,
@@ -149,7 +169,12 @@ export const appRouter = router({
       }),
 
     history: protectedProcedure
-      .input(z.object({ limit: z.number().default(50), offset: z.number().default(0) }))
+      .input(
+        z.object({
+          limit: z.number().default(50),
+          offset: z.number().default(0),
+        })
+      )
       .query(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
         const orgId = ctx.orgId;
@@ -178,7 +203,7 @@ export const appRouter = router({
 
         return db.addXP(userId, orgId, input.amount);
       }),
-    
+
     // Badges
     getBadges: protectedProcedure.query(async ({ ctx }) => {
       const userId = ctx.user?.id;
@@ -187,7 +212,7 @@ export const appRouter = router({
 
       return db.getUserBadges(userId, orgId);
     }),
-    
+
     getAllBadgeDefinitions: publicProcedure.query(() => {
       return db.getAllBadgeDefinitions();
     }),
@@ -196,22 +221,29 @@ export const appRouter = router({
   // Recipes Router
   recipes: router({
     list: publicProcedure
-      .input(z.object({
-        category: z.string().optional(),
-        difficulty: z.string().optional(),
-        limit: z.number().default(50),
-      }))
+      .input(
+        z.object({
+          category: z.string().optional(),
+          difficulty: z.string().optional(),
+          limit: z.number().default(50),
+        })
+      )
       .query(async ({ input, ctx }) => {
         // For public recipes, use default org or require orgId in input
         // For now, we'll require orgId from context if user is authenticated, otherwise use default
-        const orgId = ctx.orgId || await db.getDefaultOrgId();
-        return db.getRecipes(orgId, input.category, input.difficulty, input.limit);
+        const orgId = ctx.orgId || (await db.getDefaultOrgId());
+        return db.getRecipes(
+          orgId,
+          input.category,
+          input.difficulty,
+          input.limit
+        );
       }),
 
     getById: publicProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input, ctx }) => {
-        const orgId = ctx.orgId || await db.getDefaultOrgId();
+        const orgId = ctx.orgId || (await db.getDefaultOrgId());
         return db.getRecipeById(input.id, orgId);
       }),
 
@@ -236,21 +268,29 @@ export const appRouter = router({
       }),
 
     completeRecipe: protectedProcedure
-      .input(z.object({
-        userRecipeId: z.number(),
-        rating: z.number().min(1).max(5),
-        photo: z.string().optional(),
-      }))
+      .input(
+        z.object({
+          userRecipeId: z.number(),
+          rating: z.number().min(1).max(5),
+          photo: z.string().optional(),
+        })
+      )
       .mutation(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
         const orgId = ctx.orgId;
         if (!userId || !orgId) throw new Error("User not authenticated");
 
-        const result = await db.completeRecipe(userId, orgId, input.userRecipeId, input.rating, input.photo);
-        
+        const result = await db.completeRecipe(
+          userId,
+          orgId,
+          input.userRecipeId,
+          input.rating,
+          input.photo
+        );
+
         // Check and award badges after completing recipe
         const badgeResult = await db.checkAndAwardBadges(userId, orgId);
-        
+
         return {
           ...result,
           newBadges: badgeResult.newlyAwarded,
@@ -262,29 +302,38 @@ export const appRouter = router({
   community: router({
     // Lista posts com paginação cursor-based
     getPosts: publicProcedure
-      .input(z.object({
-        category: z.enum(COMMUNITY_CATEGORY_VALUES as [string, ...string[]]).optional(),
-        limit: z.number().min(1).max(50).default(20),
-        cursor: z.number().nullish(), // ID do último post para paginação
-      }))
+      .input(
+        z.object({
+          category: z.enum(COMMUNITY_CATEGORY_VALUES).optional(),
+          limit: z.number().min(1).max(50).default(20),
+          cursor: z.number().nullish(), // ID do último post para paginação
+        })
+      )
       .query(async ({ input, ctx }) => {
-        // Passa userId se autenticado para calcular hasVoted
         const currentUserId = ctx.user?.id;
-        const orgId = ctx.orgId || await db.getDefaultOrgId();
-        return db.getCommunityPosts(orgId, input.category, input.limit, input.cursor ?? undefined, currentUserId);
+        const orgId = ctx.orgId || (await db.getDefaultOrgId());
+        return db.getCommunityPosts(
+          orgId,
+          input.category,
+          input.limit,
+          input.cursor ?? undefined,
+          currentUserId
+        );
       }),
 
     createPost: protectedProcedure
-      .input(z.object({
-        title: z.string().min(1).max(255),
-        description: z.string().max(5000).optional(),
-        imageUrl: z.string().url().optional(),
-        videoUrl: z.string().url().optional(),
-        category: z.enum(COMMUNITY_CATEGORY_VALUES as [string, ...string[]]),
-        recipeId: z.number().optional(),
-        instagramUrl: z.string().url().optional(),
-        tiktokUrl: z.string().url().optional(),
-      }))
+      .input(
+        z.object({
+          title: z.string().min(1).max(255),
+          description: z.string().max(5000).optional(),
+          imageUrl: z.string().url().optional(),
+          videoUrl: z.string().url().optional(),
+          category: z.enum(COMMUNITY_CATEGORY_VALUES),
+          recipeId: z.number().optional(),
+          instagramUrl: z.string().url().optional(),
+          tiktokUrl: z.string().url().optional(),
+        })
+      )
       .mutation(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
         const orgId = ctx.orgId;
@@ -295,10 +344,12 @@ export const appRouter = router({
 
     // Toggle de voto (vota/desvota)
     votePost: protectedProcedure
-      .input(z.object({
-        postId: z.number(),
-        voteType: z.enum(VOTE_TYPES as [string, ...string[]]).default("LIKE"),
-      }))
+      .input(
+        z.object({
+          postId: z.number(),
+          voteType: z.enum(VOTE_TYPES).default("LIKE"),
+        })
+      )
       .mutation(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
         const orgId = ctx.orgId;
@@ -308,12 +359,14 @@ export const appRouter = router({
       }),
 
     getLeaderboard: publicProcedure
-      .input(z.object({
-        category: z.enum(COMMUNITY_CATEGORY_VALUES as [string, ...string[]]).optional(),
-        timeframe: z.enum(LEADERBOARD_TIMEFRAMES as [string, ...string[]]).default("ALL"),
-      }))
+      .input(
+        z.object({
+          category: z.enum(COMMUNITY_CATEGORY_VALUES).optional(),
+          timeframe: z.enum(LEADERBOARD_TIMEFRAMES).default("ALL"),
+        })
+      )
       .query(async ({ input, ctx }) => {
-        const orgId = ctx.orgId || await db.getDefaultOrgId();
+        const orgId = ctx.orgId || (await db.getDefaultOrgId());
         return db.getLeaderboard(orgId, input.category, input.timeframe);
       }),
   }),
@@ -321,13 +374,15 @@ export const appRouter = router({
   // Marketplace Router
   marketplace: router({
     getProducts: publicProcedure
-      .input(z.object({
-        category: z.string().optional(),
-        limit: z.number().default(20),
-        offset: z.number().default(0),
-      }))
+      .input(
+        z.object({
+          category: z.string().optional(),
+          limit: z.number().default(20),
+          offset: z.number().default(0),
+        })
+      )
       .query(async ({ input, ctx }) => {
-        const orgId = ctx.orgId || await db.getDefaultOrgId();
+        const orgId = ctx.orgId || (await db.getDefaultOrgId());
         return db.getProducts(orgId, input.category, input.limit, input.offset);
       }),
 
@@ -340,10 +395,12 @@ export const appRouter = router({
     }),
 
     addToCart: protectedProcedure
-      .input(z.object({
-        productId: z.number(),
-        quantity: z.number().positive().default(1),
-      }))
+      .input(
+        z.object({
+          productId: z.number(),
+          quantity: z.number().positive().default(1),
+        })
+      )
       .mutation(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
         const orgId = ctx.orgId;
@@ -374,34 +431,51 @@ export const appRouter = router({
   // Conversation History Router
   conversationHistory: router({
     save: protectedProcedure
-      .input(z.object({
-        title: z.string(),
-        messages: z.array(z.object({
-          role: z.string(),
-          content: z.string(),
-          timestamp: z.date(),
-        })),
-        xpGained: z.number(),
-      }))
+      .input(
+        z.object({
+          title: z.string(),
+          messages: z.array(
+            z.object({
+              role: z.string(),
+              content: z.string(),
+              timestamp: z.date(),
+            })
+          ),
+          xpGained: z.number(),
+        })
+      )
       .mutation(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
         const orgId = ctx.orgId;
         if (!userId || !orgId) throw new Error("User not authenticated");
 
-        return db.saveConversationHistory(userId, orgId, input.title, input.messages, input.xpGained);
+        return db.saveConversationHistory(
+          userId,
+          orgId,
+          input.title,
+          input.messages,
+          input.xpGained
+        );
       }),
 
     getHistory: protectedProcedure
-      .input(z.object({
-        limit: z.number().default(20),
-        offset: z.number().default(0),
-      }))
+      .input(
+        z.object({
+          limit: z.number().default(20),
+          offset: z.number().default(0),
+        })
+      )
       .query(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
         const orgId = ctx.orgId;
         if (!userId || !orgId) throw new Error("User not authenticated");
 
-        return db.getConversationHistory(userId, orgId, input.limit, input.offset);
+        return db.getConversationHistory(
+          userId,
+          orgId,
+          input.limit,
+          input.offset
+        );
       }),
 
     getById: protectedProcedure
@@ -451,9 +525,11 @@ export const appRouter = router({
 
     // Cria uma sessão de checkout do Stripe
     createCheckoutSession: protectedProcedure
-      .input(z.object({
-        tier: z.enum(["MESTRE", "CLUBE_BRO"]),
-      }))
+      .input(
+        z.object({
+          tier: z.enum(["MESTRE", "CLUBE_BRO"]),
+        })
+      )
       .mutation(async ({ input, ctx }) => {
         const userId = ctx.user?.id;
         const orgId = ctx.orgId;
@@ -464,15 +540,19 @@ export const appRouter = router({
         if (!isStripeConfigured()) {
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
-            message: "Sistema de pagamentos não configurado. Contate o suporte.",
+            message:
+              "Sistema de pagamentos não configurado. Contate o suporte.",
           });
         }
 
         // Verificar se usuário já tem esse tier ou superior
         const currentTier = await db.getUserTier(userId, orgId);
         const tierOrder = { FREE: 0, MESTRE: 1, CLUBE_BRO: 2 };
-        
-        if (tierOrder[currentTier as keyof typeof tierOrder] >= tierOrder[input.tier]) {
+
+        if (
+          tierOrder[currentTier as keyof typeof tierOrder] >=
+          tierOrder[input.tier]
+        ) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: `Você já possui o plano ${currentTier} ou superior.`,

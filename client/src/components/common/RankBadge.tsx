@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 const RANK_COLORS: Record<string, string> = {
-  NOVATO: "from-gray-400 to-gray-600",
+  NOVATO: "from-muted to-muted-foreground/50",
   BRO_DA_PANELA: "from-orange-400 to-orange-600",
   MESTRE_DO_MALTE: "from-yellow-400 to-yellow-600",
   ALQUIMISTA: "from-purple-400 to-purple-600",
@@ -35,7 +35,7 @@ export function RankBadge({ rank, xp, size = "md" }: RankBadgeProps) {
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-2 rounded-full bg-gradient-to-r text-white font-bold shadow-lg",
+        "inline-flex items-center gap-2 rounded-full bg-gradient-to-r text-primary-foreground font-bold shadow-lg",
         `bg-gradient-to-r ${colorClass}`,
         sizeClasses[size]
       )}

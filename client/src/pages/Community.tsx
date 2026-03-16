@@ -65,12 +65,14 @@ type LocalPost = {
 
 export default function Community() {
   const { isAuthenticated, logout } = useAuth();
-  const [selectedTimeframe, setSelectedTimeframe] = useState<LeaderboardTimeframe>("ALL");
-  
+  const [selectedTimeframe, setSelectedTimeframe] =
+    useState<LeaderboardTimeframe>("ALL");
+
   // Form states
   const [newPostTitle, setNewPostTitle] = useState("");
   const [newPostContent, setNewPostContent] = useState("");
-  const [newPostCategory, setNewPostCategory] = useState<CommunityCategory>("CERVEJA");
+  const [newPostCategory, setNewPostCategory] =
+    useState<CommunityCategory>("CERVEJA");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Local posts state para update otimista
@@ -114,17 +116,18 @@ export default function Community() {
     if (postsQuery.data) {
       setHasMore(!!postsQuery.data.nextCursor);
       setCursor(postsQuery.data.nextCursor);
-      setLocalPosts((prev) =>
-        postsQuery.data?.items.map((p) => {
-          const existing = prev.find((post) => post.id === p.id);
+      setLocalPosts(
+        prev =>
+          postsQuery.data?.items.map(p => {
+            const existing = prev.find(post => post.id === p.id);
 
-          return {
-            ...p,
-            hasVoted: existing?.hasVoted ?? p.hasVoted ?? false,
-            votes: p.votes ?? existing?.votes ?? 0,
-            isVoting: false,
-          };
-        }) || []
+            return {
+              ...p,
+              hasVoted: existing?.hasVoted ?? p.hasVoted ?? false,
+              votes: p.votes ?? existing?.votes ?? 0,
+              isVoting: false,
+            };
+          }) || []
       );
       if (!hasLoadedInitial) {
         setHasLoadedInitial(true);
@@ -135,7 +138,7 @@ export default function Community() {
   // Carregar mais posts
   const loadMorePosts = useCallback(async () => {
     if (!cursor || isLoadingMore || !hasMore) return;
-    
+
     setIsLoadingMore(true);
     try {
       await postsQuery.refetch();
@@ -172,7 +175,7 @@ export default function Community() {
       toast.error("Faça login para participar da comunidade.", {
         action: {
           label: "Login",
-          onClick: () => window.location.href = "/",
+          onClick: () => (window.location.href = "/"),
         },
       });
       return;
@@ -205,19 +208,22 @@ export default function Community() {
       // Limpar form
       setNewPostTitle("");
       setNewPostContent("");
-      
+
       toast.success("Post publicado! 🔥", {
         description: "Sua contribuição foi compartilhada com a comunidade.",
       });
     } catch (error: any) {
       console.error("Error creating post:", error);
-      
+
       // Verificar se é erro de autenticação
-      if (error?.data?.code === "UNAUTHORIZED" || error?.message?.includes("UNAUTHORIZED")) {
+      if (
+        error?.data?.code === "UNAUTHORIZED" ||
+        error?.message?.includes("UNAUTHORIZED")
+      ) {
         toast.error("Faça login para participar da comunidade.", {
           action: {
             label: "Login",
-            onClick: () => window.location.href = "/",
+            onClick: () => (window.location.href = "/"),
           },
         });
       } else {
@@ -229,90 +235,115 @@ export default function Community() {
   };
 
   // Handle vote (toggle com update otimista)
-  const handleVote = useCallback(async (postId: number) => {
-    if (!isAuthenticated) {
-      toast.error("Faça login para votar na comunidade.", {
-        action: {
-          label: "Login",
-          onClick: () => window.location.href = "/",
-        },
-      });
-      return;
-    }
-
-    // Encontrar post atual
-    const postIndex = localPosts.findIndex(p => p.id === postId);
-    if (postIndex === -1) return;
-
-    const post = localPosts[postIndex];
-    
-    // Evitar cliques duplos
-    if (post.isVoting) return;
-
-    // Update otimista
-    const wasVoted = post.hasVoted;
-    const optimisticVotes = wasVoted ? post.votes - 1 : post.votes + 1;
-    
-    setLocalPosts(prev => prev.map(p => 
-      p.id === postId 
-        ? { ...p, hasVoted: !wasVoted, votes: optimisticVotes, isVoting: true }
-        : p
-    ));
-
-    try {
-      const result = await votePostMutation.mutateAsync({
-        postId,
-        voteType: "LIKE",
-      });
-
-      // Atualizar com valor real do servidor
-      setLocalPosts(prev => prev.map(p => 
-        p.id === postId 
-          ? { ...p, hasVoted: result.hasVoted, votes: result.newVoteCount, isVoting: false }
-          : p
-      ));
-
-      // Feedback sutil
-      if (result.hasVoted) {
-        toast.success("🔥", { duration: 1000 });
-      }
-    } catch (error: any) {
-      console.error("Error voting:", error);
-      
-      // Reverter update otimista
-      setLocalPosts(prev => prev.map(p => 
-        p.id === postId 
-          ? { ...p, hasVoted: wasVoted, votes: post.votes, isVoting: false }
-          : p
-      ));
-
-      // Verificar se é erro de autenticação
-      if (error?.data?.code === "UNAUTHORIZED" || error?.message?.includes("UNAUTHORIZED")) {
+  const handleVote = useCallback(
+    async (postId: number) => {
+      if (!isAuthenticated) {
         toast.error("Faça login para votar na comunidade.", {
           action: {
             label: "Login",
-            onClick: () => window.location.href = "/",
+            onClick: () => (window.location.href = "/"),
           },
         });
-      } else {
-        toast.error("Erro ao votar. Tente novamente.");
+        return;
       }
-    }
-  }, [isAuthenticated, localPosts, votePostMutation]);
+
+      // Encontrar post atual
+      const postIndex = localPosts.findIndex(p => p.id === postId);
+      if (postIndex === -1) return;
+
+      const post = localPosts[postIndex];
+
+      // Evitar cliques duplos
+      if (post.isVoting) return;
+
+      // Update otimista
+      const wasVoted = post.hasVoted;
+      const optimisticVotes = wasVoted ? post.votes - 1 : post.votes + 1;
+
+      setLocalPosts(prev =>
+        prev.map(p =>
+          p.id === postId
+            ? {
+                ...p,
+                hasVoted: !wasVoted,
+                votes: optimisticVotes,
+                isVoting: true,
+              }
+            : p
+        )
+      );
+
+      try {
+        const result = await votePostMutation.mutateAsync({
+          postId,
+          voteType: "LIKE",
+        });
+
+        // Atualizar com valor real do servidor
+        setLocalPosts(prev =>
+          prev.map(p =>
+            p.id === postId
+              ? {
+                  ...p,
+                  hasVoted: result.hasVoted,
+                  votes: result.newVoteCount,
+                  isVoting: false,
+                }
+              : p
+          )
+        );
+
+        // Feedback sutil
+        if (result.hasVoted) {
+          toast.success("🔥", { duration: 1000 });
+        }
+      } catch (error: any) {
+        console.error("Error voting:", error);
+
+        // Reverter update otimista
+        setLocalPosts(prev =>
+          prev.map(p =>
+            p.id === postId
+              ? { ...p, hasVoted: wasVoted, votes: post.votes, isVoting: false }
+              : p
+          )
+        );
+
+        // Verificar se é erro de autenticação
+        if (
+          error?.data?.code === "UNAUTHORIZED" ||
+          error?.message?.includes("UNAUTHORIZED")
+        ) {
+          toast.error("Faça login para votar na comunidade.", {
+            action: {
+              label: "Login",
+              onClick: () => (window.location.href = "/"),
+            },
+          });
+        } else {
+          toast.error("Erro ao votar. Tente novamente.");
+        }
+      }
+    },
+    [isAuthenticated, localPosts, votePostMutation]
+  );
 
   // Se não autenticado, mostra mensagem
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-950 to-gray-900">
-        <Card className="bg-gray-800/50 border-gray-700 p-8 text-center max-w-md">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted">
+        <Card className="bg-card/80 border-border p-8 text-center max-w-md">
           <Users className="h-16 w-16 text-orange-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">Comunidade BROCRAFT</h2>
-          <p className="text-gray-400 mb-6">
-            Faça login para participar da comunidade, compartilhar suas criações e votar nos melhores posts!
+          <h2 className="text-2xl font-bold text-foreground mb-2">
+            Comunidade BROCRAFT
+          </h2>
+          <p className="text-muted-foreground mb-6">
+            Faça login para participar da comunidade, compartilhar suas criações
+            e votar nos melhores posts!
           </p>
           <Button
             className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
-            onClick={() => window.location.href = "/"}
+            onClick={() => (window.location.href = "/")}
           >
             Fazer Login
           </Button>
@@ -336,7 +367,7 @@ export default function Community() {
             <Users className="h-8 w-8 text-orange-500" />
             Comunidade
           </h1>
-          <p className="text-gray-400 text-lg">
+          <p className="text-muted-foreground text-lg">
             Compartilhe suas criações e aprenda com outros Bros fermentadores.
           </p>
         </div>
@@ -345,59 +376,70 @@ export default function Community() {
           {/* Main Feed */}
           <div className="lg:col-span-2 space-y-6">
             {/* Create Post Form */}
-            <Card className="bg-gray-800/30 border-gray-700/50 backdrop-blur-sm p-6">
-              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <Card className="bg-card/80 border-border backdrop-blur-sm p-6">
+              <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
                 <MessageSquare className="h-5 w-5 text-orange-400" />
                 Compartilhar com a Comunidade
               </h3>
-              
+
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="post-title" className="block text-sm text-gray-400 mb-1">
+                  <label
+                    htmlFor="post-title"
+                    className="block text-sm text-muted-foreground mb-1"
+                  >
                     Título *
                   </label>
                   <Input
                     id="post-title"
                     placeholder="Ex: Minha primeira IPA caseira!"
                     value={newPostTitle}
-                    onChange={(e) => setNewPostTitle(e.target.value)}
+                    onChange={e => setNewPostTitle(e.target.value)}
                     maxLength={255}
-                    className="bg-gray-900/50 border-gray-700 text-white placeholder:text-gray-500"
+                    className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground"
                   />
                 </div>
-                
+
                 <div>
-                  <label htmlFor="post-content" className="block text-sm text-gray-400 mb-1">
+                  <label
+                    htmlFor="post-content"
+                    className="block text-sm text-muted-foreground mb-1"
+                  >
                     Conteúdo
                   </label>
                   <Textarea
                     id="post-content"
                     placeholder="Conte mais sobre sua experiência..."
                     value={newPostContent}
-                    onChange={(e) => setNewPostContent(e.target.value)}
+                    onChange={e => setNewPostContent(e.target.value)}
                     maxLength={5000}
-                    className="bg-gray-900/50 border-gray-700 text-white placeholder:text-gray-500 min-h-[100px]"
+                    className="bg-muted/50 border-border text-foreground placeholder:text-muted-foreground min-h-[100px]"
                   />
                 </div>
-                
+
                 <div>
-                  <label htmlFor="post-category" className="block text-sm text-gray-400 mb-1">
+                  <label
+                    htmlFor="post-category"
+                    className="block text-sm text-muted-foreground mb-1"
+                  >
                     Categoria
                   </label>
                   <select
                     id="post-category"
                     value={newPostCategory}
-                    onChange={(e) => setNewPostCategory(e.target.value as CommunityCategory)}
-                    className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-md px-3 py-2"
+                    onChange={e =>
+                      setNewPostCategory(e.target.value as CommunityCategory)
+                    }
+                    className="w-full bg-muted/50 border border-border text-foreground rounded-md px-3 py-2"
                   >
-                    {COMMUNITY_CATEGORIES.map((cat) => (
+                    {COMMUNITY_CATEGORIES.map(cat => (
                       <option key={cat.value} value={cat.value}>
                         {cat.label}
                       </option>
                     ))}
                   </select>
                 </div>
-                
+
                 <Button
                   onClick={handleCreatePost}
                   disabled={isSubmitting || !newPostTitle.trim()}
@@ -421,7 +463,7 @@ export default function Community() {
             {/* Posts Feed */}
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                   <Flame className="h-5 w-5 text-orange-400" />
                   Posts Recentes
                 </h3>
@@ -430,7 +472,7 @@ export default function Community() {
                   size="sm"
                   onClick={refreshFeed}
                   disabled={postsQuery.isFetching || isRefreshingFeed}
-                  className="text-gray-300 hover:text-white"
+                  className="text-foreground hover:text-foreground"
                 >
                   <RefreshCw
                     className={`h-4 w-4 mr-2 ${postsQuery.isFetching ? "animate-spin" : ""}`}
@@ -444,14 +486,15 @@ export default function Community() {
                   <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
                 </div>
               ) : postsQuery.error ? (
-                <Card className="bg-red-900/20 border-red-500/30 p-6 text-center">
-                  <AlertCircle className="h-8 w-8 text-red-400 mx-auto mb-2" />
-                  <p className="text-red-300">
-                    Não foi possível carregar a comunidade. Tente novamente em alguns instantes.
+                <Card className="bg-destructive/10 border-destructive/30 p-6 text-center">
+                  <AlertCircle className="h-8 w-8 text-destructive mx-auto mb-2" />
+                  <p className="text-destructive">
+                    Não foi possível carregar a comunidade. Tente novamente em
+                    alguns instantes.
                   </p>
                   <Button
                     variant="outline"
-                    className="mt-4 border-red-500/50 text-red-300"
+                    className="mt-4 border-destructive/50 text-destructive"
                     onClick={() => {
                       setHasLoadedInitial(false);
                       postsQuery.refetch();
@@ -461,12 +504,12 @@ export default function Community() {
                   </Button>
                 </Card>
               ) : localPosts.length === 0 ? (
-                <Card className="bg-gray-800/30 border-gray-700/50 p-8 text-center space-y-3">
-                  <MessageSquare className="h-12 w-12 text-gray-600 mx-auto" />
-                  <p className="text-gray-400 text-lg">
+                <Card className="bg-card/80 border-border p-8 text-center space-y-3">
+                  <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto" />
+                  <p className="text-muted-foreground text-lg">
                     Ainda não tem nenhum post.
                   </p>
-                  <p className="text-gray-500">
+                  <p className="text-muted-foreground">
                     Seja o primeiro a compartilhar algo da sua brassagem! 🍺
                   </p>
                   <Button
@@ -481,33 +524,35 @@ export default function Community() {
                 </Card>
               ) : (
                 <>
-                  {localPosts.map((post) => (
+                  {localPosts.map(post => (
                     <Card
                       key={post.id}
-                      className="bg-gray-800/30 border-gray-700/50 backdrop-blur-sm p-5 hover:border-orange-500/30 transition-all"
+                      className="bg-card/80 border-border backdrop-blur-sm p-5 hover:border-orange-500/30 transition-all"
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           {/* Category Badge */}
-                          <span className="inline-block text-xs bg-gray-700/50 text-gray-300 px-2 py-1 rounded-full mb-2">
-                            {COMMUNITY_CATEGORIES.find(c => c.value === post.category)?.label || post.category}
+                          <span className="inline-block text-xs bg-muted text-foreground px-2 py-1 rounded-full mb-2">
+                            {COMMUNITY_CATEGORIES.find(
+                              c => c.value === post.category
+                            )?.label || post.category}
                           </span>
-                          
+
                           {/* Title */}
-                          <h4 className="text-lg font-bold text-white mb-1 line-clamp-2">
+                          <h4 className="text-lg font-bold text-foreground mb-1 line-clamp-2">
                             {post.title}
                           </h4>
-                          
+
                           {/* Description */}
                           {post.description && (
-                            <p className="text-gray-400 text-sm line-clamp-2 mb-3">
+                            <p className="text-muted-foreground text-sm line-clamp-2 mb-3">
                               {post.description}
                             </p>
                           )}
-                          
+
                           {/* Author & Date */}
-                          <div className="flex items-center gap-4 text-xs text-gray-500">
-                            <span className="font-semibold text-gray-400">
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span className="font-semibold text-muted-foreground">
                               {post.authorName}
                             </span>
                             <span className="flex items-center gap-1">
@@ -516,7 +561,7 @@ export default function Community() {
                             </span>
                           </div>
                         </div>
-                        
+
                         {/* Vote Button */}
                         <div className="flex flex-col items-center gap-1">
                           <Button
@@ -524,12 +569,20 @@ export default function Community() {
                             size="sm"
                             onClick={() => handleVote(post.id)}
                             disabled={post.isVoting}
-                            aria-label={post.hasVoted ? "Remover voto deste post" : "Votar neste post"}
-                            title={post.hasVoted ? "Clique para remover voto" : "Clique para votar"}
+                            aria-label={
+                              post.hasVoted
+                                ? "Remover voto deste post"
+                                : "Votar neste post"
+                            }
+                            title={
+                              post.hasVoted
+                                ? "Clique para remover voto"
+                                : "Clique para votar"
+                            }
                             className={`p-2 transition-all ${
                               post.hasVoted
-                                ? "text-red-400 bg-red-500/20 hover:bg-red-500/30"
-                                : "text-gray-400 hover:text-red-400 hover:bg-red-500/10"
+                                ? "text-destructive bg-destructive/20 hover:bg-destructive/30"
+                                : "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                             }`}
                           >
                             {post.isVoting ? (
@@ -540,9 +593,13 @@ export default function Community() {
                               />
                             )}
                           </Button>
-                          <span className={`text-sm font-bold transition-colors ${
-                            post.hasVoted ? "text-red-400" : "text-gray-300"
-                          }`}>
+                          <span
+                            className={`text-sm font-bold transition-colors ${
+                              post.hasVoted
+                                ? "text-destructive"
+                                : "text-foreground"
+                            }`}
+                          >
                             {post.votes}
                           </span>
                         </div>
@@ -557,7 +614,7 @@ export default function Community() {
                         variant="outline"
                         onClick={loadMorePosts}
                         disabled={isLoadingMore}
-                        className="border-gray-700 text-gray-300 hover:text-white hover:bg-gray-800"
+                        className="border-border text-foreground hover:bg-muted"
                       >
                         {isLoadingMore ? (
                           <>
@@ -580,29 +637,31 @@ export default function Community() {
 
           {/* Sidebar - Leaderboard */}
           <div className="space-y-6">
-            <Card className="bg-gray-800/30 border-gray-700/50 backdrop-blur-sm p-6">
-              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <Card className="bg-card/80 border-border backdrop-blur-sm p-6">
+              <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-yellow-400" />
                 Top Bros da Comunidade
               </h3>
 
               {/* Timeframe Selector */}
               <div className="flex gap-2 mb-4">
-                {(["ALL", "WEEK", "MONTH"] as LeaderboardTimeframe[]).map((tf) => (
-                  <Button
-                    key={tf}
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedTimeframe(tf)}
-                    className={`flex-1 text-xs ${
-                      selectedTimeframe === tf
-                        ? "bg-orange-500/20 text-orange-400 border border-orange-500/30"
-                        : "text-gray-400 hover:text-white"
-                    }`}
-                  >
-                    {TIMEFRAME_LABELS[tf]}
-                  </Button>
-                ))}
+                {(["ALL", "WEEK", "MONTH"] as LeaderboardTimeframe[]).map(
+                  tf => (
+                    <Button
+                      key={tf}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedTimeframe(tf)}
+                      className={`flex-1 text-xs ${
+                        selectedTimeframe === tf
+                          ? "bg-orange-500/20 text-orange-400 border border-orange-500/30"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {TIMEFRAME_LABELS[tf]}
+                    </Button>
+                  )
+                )}
               </div>
 
               {/* Leaderboard List */}
@@ -612,12 +671,14 @@ export default function Community() {
                 </div>
               ) : leaderboardQuery.error ? (
                 <div className="text-center py-6 space-y-3">
-                  <AlertCircle className="h-8 w-8 text-red-400 mx-auto" />
-                  <p className="text-red-200 text-sm">Erro ao carregar leaderboard</p>
+                  <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
+                  <p className="text-destructive text-sm">
+                    Erro ao carregar leaderboard
+                  </p>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="border-red-400/50 text-red-100 hover:bg-red-500/10"
+                    className="border-destructive/50 text-destructive hover:bg-destructive/10"
                     onClick={() => leaderboardQuery.refetch()}
                   >
                     <RotateCcw className="h-4 w-4 mr-2" />
@@ -626,7 +687,9 @@ export default function Community() {
                 </div>
               ) : !leaderboardQuery.data?.length ? (
                 <div className="text-center py-6 space-y-2">
-                  <p className="text-gray-400 text-sm">Nenhum post neste período.</p>
+                  <p className="text-muted-foreground text-sm">
+                    Nenhum post neste período.
+                  </p>
                   <Button
                     size="sm"
                     variant="ghost"
@@ -641,7 +704,7 @@ export default function Community() {
                   {leaderboardQuery.data.slice(0, 5).map((post, idx) => (
                     <div
                       key={post.id}
-                      className="flex items-center gap-3 p-3 bg-gray-900/30 rounded-lg"
+                      className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg"
                     >
                       {/* Position */}
                       <div
@@ -649,25 +712,25 @@ export default function Community() {
                           idx === 0
                             ? "bg-yellow-500/20 text-yellow-400"
                             : idx === 1
-                            ? "bg-gray-400/20 text-gray-300"
-                            : idx === 2
-                            ? "bg-orange-600/20 text-orange-400"
-                            : "bg-gray-700/30 text-gray-500"
+                              ? "bg-muted text-foreground"
+                              : idx === 2
+                                ? "bg-orange-600/20 text-orange-400"
+                                : "bg-muted/50 text-muted-foreground"
                         }`}
                       >
                         {idx + 1}
                       </div>
-                      
+
                       {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-white truncate">
+                        <p className="text-sm font-semibold text-foreground truncate">
                           {post.title}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-muted-foreground">
                           {post.authorName}
                         </p>
                       </div>
-                      
+
                       {/* Votes */}
                       <div className="flex items-center gap-1 text-orange-400">
                         <Heart className="h-4 w-4" />
@@ -686,14 +749,16 @@ export default function Community() {
               </h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Total de Posts</span>
-                  <span className="font-bold text-white">
+                  <span className="text-muted-foreground">Total de Posts</span>
+                  <span className="font-bold text-foreground">
                     {localPosts.length}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Top desta semana</span>
-                  <span className="font-bold text-white">
+                  <span className="text-muted-foreground">
+                    Top desta semana
+                  </span>
+                  <span className="font-bold text-foreground">
                     {leaderboardQuery.data?.[0]?.votes || 0} votos
                   </span>
                 </div>

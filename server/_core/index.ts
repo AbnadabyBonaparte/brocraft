@@ -42,16 +42,16 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   // Validate environment variables on startup
   validateEnv();
-  
+
   // Initialize monitoring (Sentry)
   initMonitoring();
-  
+
   // Log rate limit configuration
   logRateLimitConfig();
-  
+
   const app = express();
   const server = createServer(app);
-  
+
   // Apply general rate limiting to all API routes
   app.use("/api", generalRateLimiter);
 

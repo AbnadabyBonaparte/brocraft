@@ -14,7 +14,7 @@ const PRICING_PLANS = [
     price: "Grátis",
     description: "Perfeito para começar",
     icon: "🎯",
-    color: "from-gray-500 to-gray-600",
+    color: "from-muted to-muted-foreground/50",
     features: [
       { text: "Chat com IA (10 msgs/dia)", included: true },
       { text: "50 receitas base", included: true },
@@ -73,32 +73,33 @@ const PRICING_PLANS = [
 export function PricingSection() {
   const { isAuthenticated } = useAuth();
   const [loadingTier, setLoadingTier] = useState<string | null>(null);
-  
-  const createCheckoutMutation = trpc.billing.createCheckoutSession.useMutation();
+
+  const createCheckoutMutation =
+    trpc.billing.createCheckoutSession.useMutation();
 
   const handleUpgrade = async (tier: "MESTRE" | "CLUBE_BRO") => {
     if (!isAuthenticated) {
       toast.error("Faça login para assinar um plano", {
         action: {
           label: "Login",
-          onClick: () => window.location.href = getLoginUrl(),
+          onClick: () => (window.location.href = getLoginUrl()),
         },
       });
       return;
     }
 
     setLoadingTier(tier);
-    
+
     try {
       const result = await createCheckoutMutation.mutateAsync({ tier });
-      
+
       if (result.url) {
         // Redirecionar para o Stripe Checkout
         window.location.href = result.url;
       }
     } catch (error: any) {
       console.error("Checkout error:", error);
-      
+
       if (error?.data?.code === "UNAUTHORIZED") {
         toast.error("Faça login para assinar um plano");
       } else if (error?.data?.code === "BAD_REQUEST") {
@@ -113,7 +114,7 @@ export function PricingSection() {
     }
   };
 
-  const handlePlanClick = (plan: typeof PRICING_PLANS[number]) => {
+  const handlePlanClick = (plan: (typeof PRICING_PLANS)[number]) => {
     if (plan.tier === "FREE") {
       window.location.href = getLoginUrl();
     } else {
@@ -122,7 +123,7 @@ export function PricingSection() {
   };
 
   return (
-    <section className="relative py-20 bg-gradient-to-b from-gray-900 to-gray-950 overflow-hidden">
+    <section className="relative py-20 bg-gradient-to-b from-background to-muted overflow-hidden">
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500/5 rounded-full blur-3xl" />
@@ -137,7 +138,7 @@ export function PricingSection() {
               Planos Simples e Transparentes
             </span>
           </h2>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Escolha o plano que melhor se adequa ao seu estilo de fermentação
           </p>
         </div>
@@ -149,13 +150,13 @@ export function PricingSection() {
               key={idx}
               className={`relative overflow-hidden transition-all ${
                 plan.popular
-                  ? "md:scale-105 border-orange-500/50 bg-gray-800/50"
-                  : "border-gray-700/50 bg-gray-800/30"
+                  ? "md:scale-105 border-primary/50 bg-card"
+                  : "border-border bg-card/80"
               } hover:shadow-2xl hover:shadow-orange-500/20 backdrop-blur-sm`}
             >
               {/* Popular Badge */}
               {plan.popular && (
-                <div className="absolute top-0 right-0 bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-1 text-xs font-bold rounded-bl-lg">
+                <div className="absolute top-0 right-0 bg-gradient-to-r from-primary to-destructive text-primary-foreground px-4 py-1 text-xs font-bold rounded-bl-lg">
                   MAIS POPULAR
                 </div>
               )}
@@ -165,11 +166,15 @@ export function PricingSection() {
                 className={`h-24 bg-gradient-to-br ${plan.color} relative overflow-hidden`}
               >
                 <div className="absolute inset-0 opacity-20">
-                  <div className="absolute top-2 right-2 text-4xl">{plan.icon}</div>
+                  <div className="absolute top-2 right-2 text-4xl">
+                    {plan.icon}
+                  </div>
                 </div>
-                <div className="relative h-full flex flex-col justify-between p-6 text-white">
+                <div className="relative h-full flex flex-col justify-between p-6 text-primary-foreground">
                   <h3 className="text-2xl font-black">{plan.name}</h3>
-                  <p className="text-xs font-semibold opacity-90">{plan.description}</p>
+                  <p className="text-xs font-semibold opacity-90">
+                    {plan.description}
+                  </p>
                 </div>
               </div>
 
@@ -177,10 +182,10 @@ export function PricingSection() {
               <div className="p-6 space-y-6">
                 {/* Price */}
                 <div>
-                  <div className="text-4xl font-black text-white">
+                  <div className="text-4xl font-black text-primary-foreground">
                     {plan.price}
                     {plan.period && (
-                      <span className="text-lg text-gray-400 font-normal">
+                      <span className="text-lg text-primary-foreground/80 font-normal">
                         {plan.period}
                       </span>
                     )}
@@ -194,11 +199,13 @@ export function PricingSection() {
                       {feature.included ? (
                         <Check className="h-5 w-5 text-green-400 flex-shrink-0 mt-0.5" />
                       ) : (
-                        <X className="h-5 w-5 text-gray-600 flex-shrink-0 mt-0.5" />
+                        <X className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
                       )}
                       <span
                         className={`text-sm ${
-                          feature.included ? "text-gray-300" : "text-gray-600"
+                          feature.included
+                            ? "text-foreground"
+                            : "text-muted-foreground"
                         }`}
                       >
                         {feature.text}
@@ -214,10 +221,10 @@ export function PricingSection() {
                   disabled={loadingTier === plan.tier}
                   className={`w-full font-bold py-3 rounded-lg transition-all ${
                     plan.popular
-                      ? "bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white shadow-lg hover:shadow-orange-500/50"
+                      ? "bg-gradient-to-r from-primary to-destructive hover:opacity-90 text-primary-foreground shadow-lg hover:shadow-primary/50"
                       : plan.tier === "CLUBE_BRO"
-                      ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
-                      : "border-gray-700 text-gray-300 hover:bg-gray-800"
+                        ? "bg-gradient-to-r from-primary to-destructive hover:opacity-90 text-primary-foreground"
+                        : "border-border text-foreground hover:bg-muted"
                   }`}
                 >
                   {loadingTier === plan.tier ? (
@@ -228,7 +235,9 @@ export function PricingSection() {
                   ) : (
                     <>
                       {plan.popular && <Zap className="h-4 w-4 mr-2" />}
-                      {plan.tier === "CLUBE_BRO" && <Crown className="h-4 w-4 mr-2" />}
+                      {plan.tier === "CLUBE_BRO" && (
+                        <Crown className="h-4 w-4 mr-2" />
+                      )}
                       {plan.cta}
                     </>
                   )}
@@ -240,10 +249,12 @@ export function PricingSection() {
 
         {/* FAQ Note */}
         <div className="mt-16 text-center">
-          <p className="text-gray-400 text-lg">
+          <p className="text-muted-foreground text-lg">
             Todos os planos incluem{" "}
-            <span className="text-orange-400 font-bold">7 dias de trial grátis</span>.
-            Cancele quando quiser.
+            <span className="text-orange-400 font-bold">
+              7 dias de trial grátis
+            </span>
+            . Cancele quando quiser.
           </p>
         </div>
       </div>
@@ -257,20 +268,25 @@ export function PricingSection() {
 export function UpgradeCTA({ currentTier }: { currentTier?: string }) {
   const { isAuthenticated } = useAuth();
   const [loadingTier, setLoadingTier] = useState<string | null>(null);
-  
-  const createCheckoutMutation = trpc.billing.createCheckoutSession.useMutation();
+
+  const createCheckoutMutation =
+    trpc.billing.createCheckoutSession.useMutation();
 
   if (!isAuthenticated) return null;
-  
+
   // Não mostrar para usuários CLUBE_BRO
   if (currentTier === "CLUBE_BRO") {
     return (
       <div className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/30 rounded-lg p-4">
         <div className="flex items-center gap-2">
           <Crown className="h-5 w-5 text-purple-400" />
-          <span className="text-sm font-bold text-purple-300">Membro do CLUBE BRO</span>
+          <span className="text-sm font-bold text-purple-300">
+            Membro do CLUBE BRO
+          </span>
         </div>
-        <p className="text-xs text-purple-300/70 mt-1">Acesso completo a todos os recursos</p>
+        <p className="text-xs text-purple-300/70 mt-1">
+          Acesso completo a todos os recursos
+        </p>
       </div>
     );
   }
@@ -297,14 +313,16 @@ export function UpgradeCTA({ currentTier }: { currentTier?: string }) {
       label: "Vire MESTRE",
       price: "R$ 9,90/mês",
       color: "from-orange-600/20 to-red-600/20 border-orange-500/30",
-      btnColor: "from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700",
+      btnColor:
+        "from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700",
     },
     CLUBE_BRO: {
       icon: <Crown className="h-5 w-5 text-purple-400" />,
       label: "Entre no CLUBE BRO",
       price: "R$ 19,90/mês",
       color: "from-purple-600/20 to-pink-600/20 border-purple-500/30",
-      btnColor: "from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700",
+      btnColor:
+        "from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700",
     },
   };
 
@@ -314,13 +332,17 @@ export function UpgradeCTA({ currentTier }: { currentTier?: string }) {
     <div className={`bg-gradient-to-r ${info.color} rounded-lg p-4`}>
       <div className="flex items-center gap-2 mb-2">
         {info.icon}
-        <span className="text-sm font-bold text-white">{info.label}</span>
+        <span className="text-sm font-bold text-primary-foreground">
+          {info.label}
+        </span>
       </div>
-      <p className="text-xs text-gray-400 mb-3">{info.price} • Cancele quando quiser</p>
+      <p className="text-xs text-muted-foreground mb-3">
+        {info.price} • Cancele quando quiser
+      </p>
       <Button
         onClick={() => handleUpgrade(targetTier)}
         disabled={loadingTier === targetTier}
-        className={`w-full bg-gradient-to-r ${info.btnColor} text-white text-sm py-2`}
+        className={`w-full bg-gradient-to-r ${info.btnColor} text-primary-foreground text-sm py-2`}
         size="sm"
       >
         {loadingTier === targetTier ? (

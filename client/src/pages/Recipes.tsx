@@ -27,16 +27,47 @@ import { useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const CATEGORIES = [
-  { value: "CERVEJA", label: "🍺 Cerveja", color: "from-yellow-500 to-amber-700" },
-  { value: "FERMENTADOS", label: "🥒 Fermentados", color: "from-green-500 to-emerald-700" },
-  { value: "LATICINIOS", label: "🧀 Queijos", color: "from-orange-400 to-orange-700" },
-  { value: "CHARCUTARIA", label: "🥩 Charcutaria", color: "from-red-500 to-red-700" },
+  {
+    value: "CERVEJA",
+    label: "🍺 Cerveja",
+    color: "from-yellow-500 to-amber-700",
+  },
+  {
+    value: "FERMENTADOS",
+    label: "🥒 Fermentados",
+    color: "from-green-500 to-emerald-700",
+  },
+  {
+    value: "LATICINIOS",
+    label: "🧀 Queijos",
+    color: "from-orange-400 to-orange-700",
+  },
+  {
+    value: "CHARCUTARIA",
+    label: "🥩 Charcutaria",
+    color: "from-red-500 to-red-700",
+  },
 ];
 
 const DIFFICULTIES = [
-  { value: "RAJADO", label: "🔥 Rajado", level: 1, color: "from-orange-400 to-orange-600" },
-  { value: "CLASSICO", label: "⚗️ Clássico", level: 2, color: "from-yellow-400 to-yellow-600" },
-  { value: "MESTRE", label: "👑 Mestre", level: 3, color: "from-purple-400 to-purple-600" },
+  {
+    value: "RAJADO",
+    label: "🔥 Rajado",
+    level: 1,
+    color: "from-orange-400 to-orange-600",
+  },
+  {
+    value: "CLASSICO",
+    label: "⚗️ Clássico",
+    level: 2,
+    color: "from-yellow-400 to-yellow-600",
+  },
+  {
+    value: "MESTRE",
+    label: "👑 Mestre",
+    level: 3,
+    color: "from-purple-400 to-purple-600",
+  },
 ];
 
 export default function Recipes() {
@@ -63,7 +94,7 @@ export default function Recipes() {
   const filteredRecipes = useFilteredData(recipesQuery.data, {
     searchTerm: search,
     searchKeys: ["name"],
-    customFilter: (recipe) => {
+    customFilter: recipe => {
       const matchesCategory = category ? recipe.category === category : true;
       const matchesDifficulty = difficulty
         ? recipe.difficulty === difficulty
@@ -84,11 +115,13 @@ export default function Recipes() {
   };
 
   const getCategoryColor = (cat: string) => {
-    return CATEGORIES.find((c) => c.value === cat)?.color || "from-gray-500 to-gray-700";
+    return (
+      CATEGORIES.find(c => c.value === cat)?.color || "from-muted to-muted"
+    );
   };
 
   const getDifficultyInfo = (diff: string) => {
-    return DIFFICULTIES.find((d) => d.value === diff);
+    return DIFFICULTIES.find(d => d.value === diff);
   };
 
   const profileQuery = trpc.gamification.getProfile.useQuery(undefined, {
@@ -115,37 +148,38 @@ export default function Recipes() {
             <BookOpen className="h-8 w-8 text-orange-500" />
             Receitas BROCRAFT
           </h1>
-          <p className="text-gray-400 text-lg">
-            Escolha uma receita e comece sua jornada de fermentação. Ganhe XP com cada desafio!
+          <p className="text-muted-foreground text-lg">
+            Escolha uma receita e comece sua jornada de fermentação. Ganhe XP
+            com cada desafio!
           </p>
         </div>
 
         {/* Filters */}
-        <Card className="bg-gray-800/30 border-gray-700/50 backdrop-blur-sm overflow-hidden">
-          <div className="bg-gradient-to-r from-orange-600/20 to-red-600/20 border-b border-gray-700/50 px-6 py-4 flex items-center gap-2">
-            <Filter className="h-5 w-5 text-orange-400" />
-            <h2 className="text-lg font-bold text-white">Filtros</h2>
+        <Card className="bg-card/80 border-border backdrop-blur-sm overflow-hidden">
+          <div className="bg-gradient-to-r from-primary/20 to-destructive/20 border-b border-border px-6 py-4 flex items-center gap-2">
+            <Filter className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-bold text-foreground">Filtros</h2>
           </div>
           <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search */}
             <div className="relative">
-              <Search className="absolute left-3 top-3.5 h-5 w-5 text-gray-500" />
+              <Search className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
               <Input
                 placeholder="Buscar receita..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-600 focus:border-orange-500 focus:ring-orange-500"
+                onChange={e => setSearch(e.target.value)}
+                className="pl-10 bg-muted/50 border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
               />
             </div>
 
             {/* Category Filter */}
             <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="bg-gray-800/50 border-gray-700 text-white">
+              <SelectTrigger className="bg-muted/50 border-border text-foreground">
                 <SelectValue placeholder="Todas as categorias" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">Todas as categorias</SelectItem>
-                {CATEGORIES.map((cat) => (
+                {CATEGORIES.map(cat => (
                   <SelectItem key={cat.value} value={cat.value}>
                     {cat.label}
                   </SelectItem>
@@ -155,12 +189,12 @@ export default function Recipes() {
 
             {/* Difficulty Filter */}
             <Select value={difficulty} onValueChange={setDifficulty}>
-              <SelectTrigger className="bg-gray-800/50 border-gray-700 text-white">
+              <SelectTrigger className="bg-muted/50 border-border text-foreground">
                 <SelectValue placeholder="Todas as dificuldades" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">Todas as dificuldades</SelectItem>
-                {DIFFICULTIES.map((diff) => (
+                {DIFFICULTIES.map(diff => (
                   <SelectItem key={diff.value} value={diff.value}>
                     {diff.label}
                   </SelectItem>
@@ -171,10 +205,13 @@ export default function Recipes() {
 
           {/* Results Count */}
           {!recipesQuery.isLoading && (
-            <div className="px-6 py-3 border-t border-gray-700/50 bg-gray-900/30">
-              <p className="text-sm text-gray-400">
-                <span className="font-bold text-orange-400">{filteredRecipes.length}</span>{" "}
-                {filteredRecipes.length === 1 ? "receita" : "receitas"} encontrada
+            <div className="px-6 py-3 border-t border-border bg-muted/30">
+              <p className="text-sm text-muted-foreground">
+                <span className="font-bold text-primary">
+                  {filteredRecipes.length}
+                </span>{" "}
+                {filteredRecipes.length === 1 ? "receita" : "receitas"}{" "}
+                encontrada
                 {filteredRecipes.length !== 1 ? "s" : ""}
               </p>
             </div>
@@ -187,7 +224,7 @@ export default function Recipes() {
             {Array.from({ length: 6 }).map((_, index) => (
               <Card
                 key={index}
-                className="overflow-hidden border-gray-700/50 bg-gray-800/30 backdrop-blur-sm"
+                className="overflow-hidden border-border bg-card/80 backdrop-blur-sm"
               >
                 <Skeleton className="h-40 w-full" />
                 <div className="p-6 space-y-4">
@@ -200,19 +237,22 @@ export default function Recipes() {
             ))}
           </div>
         ) : recipesQuery.isError ? (
-          <Card className="bg-red-900/20 border-red-500/30 backdrop-blur-sm">
+          <Card className="bg-destructive/10 border-destructive/30 backdrop-blur-sm">
             <div className="text-center py-16 px-6 space-y-4">
-              <AlertCircle className="h-12 w-12 text-red-400 mx-auto" />
+              <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
               <div>
-                <h3 className="text-xl font-bold text-red-200 mb-2">Erro ao carregar receitas</h3>
-                <p className="text-red-100/80">
-                  Não foi possível acessar as receitas agora. Verifique sua conexão e tente novamente.
+                <h3 className="text-xl font-bold text-destructive mb-2">
+                  Erro ao carregar receitas
+                </h3>
+                <p className="text-foreground/80">
+                  Não foi possível acessar as receitas agora. Verifique sua
+                  conexão e tente novamente.
                 </p>
               </div>
               <Button
                 variant="outline"
                 onClick={() => recipesQuery.refetch()}
-                className="border-red-400/50 text-red-100 hover:bg-red-500/10"
+                className="border-destructive/50 text-destructive hover:bg-destructive/10"
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Tentar novamente
@@ -220,17 +260,20 @@ export default function Recipes() {
             </div>
           </Card>
         ) : isEmptyState ? (
-          <Card className="bg-gray-800/30 border-gray-700/50 backdrop-blur-sm">
+          <Card className="bg-card/80 border-border backdrop-blur-sm">
             <div className="text-center py-20 space-y-4">
-              <BookOpen className="h-20 w-20 text-gray-600 mx-auto mb-2 opacity-50" />
-              <h3 className="text-2xl font-bold text-gray-300">Nenhuma receita encontrada</h3>
-              <p className="text-gray-500 text-base">
-                Ajuste seus filtros ou limpe a busca para descobrir novas receitas.
+              <BookOpen className="h-20 w-20 text-muted-foreground mx-auto mb-2 opacity-50" />
+              <h3 className="text-2xl font-bold text-foreground">
+                Nenhuma receita encontrada
+              </h3>
+              <p className="text-muted-foreground text-base">
+                Ajuste seus filtros ou limpe a busca para descobrir novas
+                receitas.
               </p>
               <div className="flex justify-center gap-3">
                 <Button
                   variant="outline"
-                  className="border-gray-700 text-gray-200 hover:text-white hover:bg-gray-800"
+                  className="border-border text-foreground hover:bg-muted"
                   onClick={() => {
                     setCategory("");
                     setDifficulty("");
@@ -241,7 +284,7 @@ export default function Recipes() {
                   Limpar filtros
                 </Button>
                 <Button
-                  className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
+                  className="bg-gradient-to-r from-primary to-destructive hover:opacity-90"
                   onClick={() => recipesQuery.refetch()}
                 >
                   <Flame className="h-4 w-4 mr-2" />
@@ -252,14 +295,16 @@ export default function Recipes() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredRecipes.map((recipe) => {
-              const categoryInfo = CATEGORIES.find((c) => c.value === recipe.category);
+            {filteredRecipes.map(recipe => {
+              const categoryInfo = CATEGORIES.find(
+                c => c.value === recipe.category
+              );
               const difficultyInfo = getDifficultyInfo(recipe.difficulty);
 
               return (
                 <Card
                   key={recipe.id}
-                  className="overflow-hidden hover:shadow-2xl hover:shadow-orange-500/20 transition-all duration-300 border-gray-700/50 bg-gray-800/30 backdrop-blur-sm flex flex-col group"
+                  className="overflow-hidden hover:shadow-2xl hover:shadow-primary/20 transition-all duration-300 border-border bg-card/80 backdrop-blur-sm flex flex-col group"
                 >
                   {/* Header with Gradient */}
                   <div
@@ -271,17 +316,19 @@ export default function Recipes() {
                         {categoryInfo?.label.split(" ")[0]}
                       </div>
                     </div>
-                    <div className="relative h-full flex flex-col justify-between p-6 text-white">
+                    <div className="relative h-full flex flex-col justify-between p-6 text-primary-foreground">
                       <div>
                         <h2 className="text-2xl font-black mb-2 drop-shadow-lg">
                           {recipe.name}
                         </h2>
                       </div>
                       <div className="flex gap-2 flex-wrap">
-                        <span className="bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-bold border border-white/30 shadow-lg">
+                        <span className="bg-foreground/20 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-bold border border-foreground/30 shadow-lg">
                           {categoryInfo?.label}
                         </span>
-                        <span className={`bg-gradient-to-r ${difficultyInfo?.color} text-white px-3 py-1.5 rounded-full text-sm font-bold shadow-lg`}>
+                        <span
+                          className={`bg-gradient-to-r ${difficultyInfo?.color} text-primary-foreground px-3 py-1.5 rounded-full text-sm font-bold shadow-lg`}
+                        >
                           {difficultyInfo?.label}
                         </span>
                       </div>
@@ -291,7 +338,7 @@ export default function Recipes() {
                   {/* Content */}
                   <div className="p-6 flex-1 flex flex-col gap-5">
                     {/* Description */}
-                    <p className="text-gray-300 text-sm leading-relaxed flex-1">
+                    <p className="text-muted-foreground text-sm leading-relaxed flex-1">
                       {recipe.description}
                     </p>
 
@@ -317,14 +364,16 @@ export default function Recipes() {
                             className={`h-2.5 w-8 bg-gradient-to-r ${difficultyInfo?.color} rounded-sm shadow-lg`}
                           />
                         ))}
-                        {[...Array(3 - (difficultyInfo?.level || 0))].map((_, i) => (
-                          <div
-                            key={i}
-                            className="h-2.5 w-8 bg-gray-700 rounded-sm"
-                          />
-                        ))}
+                        {[...Array(3 - (difficultyInfo?.level || 0))].map(
+                          (_, i) => (
+                            <div
+                              key={i}
+                              className="h-2.5 w-8 bg-muted rounded-sm"
+                            />
+                          )
+                        )}
                       </div>
-                      <span className="text-xs font-bold text-gray-400 uppercase">
+                      <span className="text-xs font-bold text-muted-foreground uppercase">
                         Dificuldade
                       </span>
                     </div>
@@ -333,7 +382,7 @@ export default function Recipes() {
                     <Button
                       onClick={() => handleStartRecipe(recipe.id)}
                       disabled={startRecipeMutation.isPending}
-                      className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-bold py-3 rounded-lg transition-all shadow-lg hover:shadow-orange-500/50 mt-2 group"
+                      className="w-full bg-gradient-to-r from-primary to-destructive hover:opacity-90 text-primary-foreground font-bold py-3 rounded-lg transition-all shadow-lg hover:shadow-primary/50 mt-2 group"
                     >
                       {startRecipeMutation.isPending ? (
                         <>

@@ -18,14 +18,17 @@ export function ChatBox() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Carga aceita. BROCRAFT v∞ online. Fogo aceso. Fermento vivo. 🔥\n\nO que você quer fermentar hoje?",
+      content:
+        "Carga aceita. BROCRAFT v∞ online. Fogo aceso. Fermento vivo. 🔥\n\nO que você quer fermentar hoje?",
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [totalXpGained, setTotalXpGained] = useState(0);
-  const [messagesRemaining, setMessagesRemaining] = useState<number | null>(null);
+  const [messagesRemaining, setMessagesRemaining] = useState<number | null>(
+    null
+  );
   const [limitReached, setLimitReached] = useState(false);
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -48,9 +51,10 @@ export function ChatBox() {
 
     const serverMessages = [...historyQuery.data]
       .sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       )
-      .map((msg) => ({
+      .map(msg => ({
         id: msg.id?.toString?.(),
         role: msg.role as "user" | "assistant",
         content: msg.content,
@@ -59,22 +63,23 @@ export function ChatBox() {
 
     if (serverMessages.length === 0) return;
 
-    setMessages((prev) => {
+    setMessages(prev => {
       if (!hasLoadedHistory || prev.length === 0) {
         return serverMessages;
       }
 
-      const existingIds = new Set(prev.map((m) => m.id).filter(Boolean));
+      const existingIds = new Set(prev.map(m => m.id).filter(Boolean));
       const merged = [...prev];
 
-      serverMessages.forEach((msg) => {
+      serverMessages.forEach(msg => {
         const isDuplicateId = msg.id && existingIds.has(msg.id);
         const isDuplicateContent = merged.some(
-          (m) =>
+          m =>
             !msg.id &&
             m.role === msg.role &&
             m.content === msg.content &&
-            (m.timestamp?.getTime?.() || 0) === (msg.timestamp?.getTime?.() || 0)
+            (m.timestamp?.getTime?.() || 0) ===
+              (msg.timestamp?.getTime?.() || 0)
         );
 
         if (!isDuplicateId && !isDuplicateContent) {
@@ -92,15 +97,16 @@ export function ChatBox() {
 
   const handleReset = async () => {
     // Save conversation history
-    const userMessages = messages.filter((m) => m.role === "user");
-    const title = userMessages.length > 0 
-      ? userMessages[0].content.substring(0, 50) 
-      : "Conversa sem título";
-    
+    const userMessages = messages.filter(m => m.role === "user");
+    const title =
+      userMessages.length > 0
+        ? userMessages[0].content.substring(0, 50)
+        : "Conversa sem título";
+
     try {
       await saveHistoryMutation.mutateAsync({
         title,
-        messages: messages.map((m) => ({
+        messages: messages.map(m => ({
           role: m.role,
           content: m.content,
           timestamp: m.timestamp || new Date(),
@@ -115,7 +121,8 @@ export function ChatBox() {
     setMessages([
       {
         role: "assistant",
-        content: "Carga aceita. BROCRAFT v∞ online. Fogo aceso. Fermento vivo. 🔥\n\nO que você quer fermentar hoje?",
+        content:
+          "Carga aceita. BROCRAFT v∞ online. Fogo aceso. Fermento vivo. 🔥\n\nO que você quer fermentar hoje?",
         timestamp: new Date(),
       },
     ]);
@@ -127,18 +134,28 @@ export function ChatBox() {
 
     const userMessage = input;
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: userMessage, timestamp: new Date() }]);
+    setMessages(prev => [
+      ...prev,
+      { role: "user", content: userMessage, timestamp: new Date() },
+    ]);
     setIsLoading(true);
 
     try {
       const response = await sendMutation.mutateAsync({ message: userMessage });
-      setMessages((prev) => [
+      setMessages(prev => [
         ...prev,
-        { role: "assistant", content: response.response, timestamp: new Date() },
+        {
+          role: "assistant",
+          content: response.response,
+          timestamp: new Date(),
+        },
       ]);
 
       // Atualizar mensagens restantes
-      if (response.messagesRemaining !== undefined && response.messagesRemaining !== null) {
+      if (
+        response.messagesRemaining !== undefined &&
+        response.messagesRemaining !== null
+      ) {
         setMessagesRemaining(response.messagesRemaining);
         if (response.messagesRemaining <= 0) {
           setLimitReached(true);
@@ -147,7 +164,7 @@ export function ChatBox() {
 
       // Show XP notification with toast
       if (response.xpGained > 0) {
-        setTotalXpGained((prev) => prev + response.xpGained);
+        setTotalXpGained(prev => prev + response.xpGained);
         toast.success(`+${response.xpGained} XP`, {
           description: "Continue a brassagem! 🍺",
           duration: 3000,
@@ -161,7 +178,8 @@ export function ChatBox() {
           description: `Você alcançou o rank ${rankName}!`,
           duration: 5000,
           style: {
-            background: "linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-rose-500) 80%, transparent))",
+            background:
+              "linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-rose-500) 80%, transparent))",
             color: "white",
             border: "none",
           },
@@ -171,26 +189,29 @@ export function ChatBox() {
       // Show badge notifications
       if (response.newBadges && response.newBadges.length > 0) {
         response.newBadges.forEach((badge, index) => {
-          setTimeout(() => {
-            toast("🏆 Novo Badge!", {
-              description: `${badge.icon} ${badge.name}`,
-              duration: 5000,
-              style: {
-                background: badge.color || "var(--color-royal-500)",
-                color: "white",
-                border: "none",
-              },
-            });
-          }, (index + 1) * 1000); // Stagger badge notifications
+          setTimeout(
+            () => {
+              toast("🏆 Novo Badge!", {
+                description: `${badge.icon} ${badge.name}`,
+                duration: 5000,
+                style: {
+                  background: badge.color || "var(--color-royal-500)",
+                  color: "white",
+                  border: "none",
+                },
+              });
+            },
+            (index + 1) * 1000
+          ); // Stagger badge notifications
         });
       }
     } catch (error: any) {
       console.error("[BROCRAFT][Chat] Error:", error);
-      
+
       // Verificar se é erro de limite de mensagens (FORBIDDEN)
       const errorCode = error?.data?.code || error?.shape?.data?.code;
       const errorMessage = error?.message || error?.shape?.message;
-      
+
       if (errorCode === "FORBIDDEN" && errorMessage?.includes("limite")) {
         setLimitReached(true);
         setMessagesRemaining(0);
@@ -198,20 +219,21 @@ export function ChatBox() {
           description: "Faça upgrade para continuar conversando.",
           action: {
             label: "Ver Planos",
-            onClick: () => window.location.href = "/#pricing",
+            onClick: () => (window.location.href = "/#pricing"),
           },
           duration: 10000,
         });
-        setMessages((prev) => [
+        setMessages(prev => [
           ...prev,
           {
             role: "assistant",
-            content: "⚠️ **Limite diário atingido!**\n\nVocê usou todas as mensagens do seu plano hoje. Para continuar aprendendo sobre fermentação, considere fazer upgrade para o plano MESTRE ou CLUBE BRO.\n\n🔥 O BROCRAFT estará aqui amanhã!",
+            content:
+              "⚠️ **Limite diário atingido!**\n\nVocê usou todas as mensagens do seu plano hoje. Para continuar aprendendo sobre fermentação, considere fazer upgrade para o plano MESTRE ou CLUBE BRO.\n\n🔥 O BROCRAFT estará aqui amanhã!",
             timestamp: new Date(),
           },
         ]);
       } else {
-        setMessages((prev) => [
+        setMessages(prev => [
           ...prev,
           {
             role: "assistant",
@@ -231,9 +253,11 @@ export function ChatBox() {
   return (
     <div className="flex flex-col h-[600px] md:h-[700px] lg:h-[800px] bg-gradient-to-b from-orange-50 to-amber-50">
       {/* Header */}
-      <div className="p-3 md:p-4 bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-lg flex-shrink-0">
+      <div className="p-3 md:p-4 bg-gradient-to-r from-primary to-destructive text-primary-foreground shadow-lg flex-shrink-0">
         <h1 className="text-xl md:text-2xl font-bold">🔥 BROCRAFT v∞</h1>
-        <p className="text-xs md:text-sm opacity-90">Fogo aceso. Fermento vivo.</p>
+        <p className="text-xs md:text-sm opacity-90">
+          Fogo aceso. Fermento vivo.
+        </p>
       </div>
 
       {/* Messages */}
@@ -246,8 +270,8 @@ export function ChatBox() {
             <Card
               className={`max-w-[85%] sm:max-w-xs lg:max-w-md px-3 md:px-4 py-2 md:py-3 ${
                 msg.role === "user"
-                  ? "bg-orange-600 text-white rounded-lg"
-                  : "bg-white text-gray-900 rounded-lg border border-orange-200"
+                  ? "bg-primary text-primary-foreground rounded-lg"
+                  : "bg-card text-foreground rounded-lg border border-border"
               }`}
             >
               <div className="text-sm md:text-base">
@@ -260,7 +284,9 @@ export function ChatBox() {
           <div className="flex justify-start">
             <div className="flex items-center space-x-2 text-orange-600">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm md:text-base">BROCRAFT está pensando...</span>
+              <span className="text-sm md:text-base">
+                BROCRAFT está pensando...
+              </span>
             </div>
           </div>
         )}
@@ -273,8 +299,13 @@ export function ChatBox() {
         {limitReached && (
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-2 md:p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-xs md:text-sm">
             <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-            <span className="flex-1">Limite diário atingido. Faça upgrade para continuar!</span>
-            <a href="/#pricing" className="text-primary font-semibold hover:underline whitespace-nowrap">
+            <span className="flex-1">
+              Limite diário atingido. Faça upgrade para continuar!
+            </span>
+            <a
+              href="/#pricing"
+              className="text-primary font-semibold hover:underline whitespace-nowrap"
+            >
               Ver Planos
             </a>
           </div>
@@ -283,9 +314,13 @@ export function ChatBox() {
         <div className="flex gap-2">
           <Input
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && !limitReached && handleSend()}
-            placeholder={limitReached ? "Limite atingido - upgrade" : "Pergunte sobre fermentação..."}
+            onChange={e => setInput(e.target.value)}
+            onKeyPress={e => e.key === "Enter" && !limitReached && handleSend()}
+            placeholder={
+              limitReached
+                ? "Limite atingido - upgrade"
+                : "Pergunte sobre fermentação..."
+            }
             disabled={isLoading || limitReached}
             className="flex-1 text-sm md:text-base"
           />
@@ -297,13 +332,15 @@ export function ChatBox() {
             <Send className="h-4 w-4" />
           </Button>
         </div>
-        <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <Sparkles className="h-3 w-3 text-orange-500" />
             XP: +{totalXpGained}
           </span>
           {messagesRemaining !== null && (
-            <span className={`${messagesRemaining <= 3 ? 'text-amber-600 font-semibold' : ''}`}>
+            <span
+              className={`${messagesRemaining <= 3 ? "text-amber-600 font-semibold" : ""}`}
+            >
               • {messagesRemaining} msgs restantes
             </span>
           )}

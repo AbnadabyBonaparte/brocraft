@@ -20,7 +20,7 @@ export async function createContext(
     if (user) {
       orgId = user.orgId;
     }
-  } catch (error) {
+  } catch {
     // Authentication is optional for public procedures.
     user = null;
     orgId = null;

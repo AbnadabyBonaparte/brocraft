@@ -1,16 +1,15 @@
 /**
  * Monitoring & Error Tracking Module for BROCRAFT
- * 
+ *
  * Integração com Sentry para error tracking em produção.
  * Graceful degradation se Sentry não estiver configurado.
- * 
+ *
  * ENVs necessárias:
  * - SENTRY_DSN: DSN do projeto Sentry
  * - ENABLE_SENTRY: "true" para habilitar
  */
 
 import * as Sentry from "@sentry/node";
-import { Express } from "express";
 import { ENV } from "./env";
 
 let sentryInitialized = false;
@@ -23,7 +22,9 @@ export function initMonitoring(): void {
   const enableSentry = process.env.ENABLE_SENTRY === "true";
 
   if (!enableSentry || !sentryDsn) {
-    console.log("[BROCRAFT][Monitoring] Sentry DISABLED (ENABLE_SENTRY or SENTRY_DSN not set)");
+    console.log(
+      "[BROCRAFT][Monitoring] Sentry DISABLED (ENABLE_SENTRY or SENTRY_DSN not set)"
+    );
     return;
   }
 
@@ -61,13 +62,19 @@ export function getSentryErrorHandler() {
 /**
  * Captura um erro manualmente
  */
-export function captureError(error: Error, context?: Record<string, any>): void {
+export function captureError(
+  error: Error,
+  context?: Record<string, any>
+): void {
   if (!sentryInitialized) {
-    console.error("[BROCRAFT][Monitoring] Error (Sentry disabled):", error.message);
+    console.error(
+      "[BROCRAFT][Monitoring] Error (Sentry disabled):",
+      error.message
+    );
     return;
   }
 
-  Sentry.withScope((scope) => {
+  Sentry.withScope(scope => {
     if (context) {
       Object.entries(context).forEach(([key, value]) => {
         scope.setExtra(key, value);
@@ -80,7 +87,10 @@ export function captureError(error: Error, context?: Record<string, any>): void 
 /**
  * Captura uma mensagem
  */
-export function captureMessage(message: string, level: "info" | "warning" | "error" = "info"): void {
+export function captureMessage(
+  message: string,
+  level: "info" | "warning" | "error" = "info"
+): void {
   if (!sentryInitialized) {
     console.log(`[BROCRAFT][Monitoring] ${level.toUpperCase()}: ${message}`);
     return;
@@ -115,7 +125,3 @@ export function clearUserContext(): void {
 export function isMonitoringEnabled(): boolean {
   return sentryInitialized;
 }
-
-
-
-

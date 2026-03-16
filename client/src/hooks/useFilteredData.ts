@@ -14,9 +14,9 @@ export function useFilteredData<T>(
   const normalizedSearch = searchTerm?.toLowerCase().trim();
 
   return useMemo(() => {
-    return (data ?? []).filter((item) => {
+    return (data ?? []).filter(item => {
       const matchesSearch = normalizedSearch
-        ? (searchKeys ?? []).some((key) => {
+        ? (searchKeys ?? []).some(key => {
             const value = item[key];
             if (typeof value === "string") {
               return value.toLowerCase().includes(normalizedSearch);

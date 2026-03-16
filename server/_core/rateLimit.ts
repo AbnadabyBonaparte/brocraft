@@ -1,9 +1,9 @@
 /**
  * Rate Limiting Module for BROCRAFT
- * 
+ *
  * Protege rotas críticas contra abuso.
  * Usa express-rate-limit com fallback em memória.
- * 
+ *
  * Rotas protegidas:
  * - Chat (mais restritivo)
  * - Billing/Stripe
@@ -48,8 +48,10 @@ function keyGenerator(req: Request): string {
 function createLimitHandler(routeType: string) {
   return (req: Request, res: Response) => {
     const key = keyGenerator(req);
-    console.log(`[BROCRAFT][RateLimit] type="${routeType}" key="${key}" exceeded`);
-    
+    console.log(
+      `[BROCRAFT][RateLimit] type="${routeType}" key="${key}" exceeded`
+    );
+
     res.status(429).json({
       error: {
         code: "RATE_LIMIT_EXCEEDED",
@@ -61,7 +63,7 @@ function createLimitHandler(routeType: string) {
 }
 
 // Skip rate limiting em desenvolvimento (opcional)
-function skipInDev(req: Request): boolean {
+function skipInDev(_req: Request): boolean {
   return !ENV.isProduction && process.env.RATE_LIMIT_DEV !== "true";
 }
 
@@ -110,15 +112,17 @@ export const generalRateLimiter = rateLimit({
 export function logRateLimitConfig(): void {
   if (ENV.isProduction) {
     console.log("[BROCRAFT][RateLimit] Rate limiting ENABLED");
-    console.log(`  - Chat: ${RATE_LIMIT_CONFIG.chat.max} reqs/${RATE_LIMIT_CONFIG.chat.windowMs}ms`);
-    console.log(`  - Billing: ${RATE_LIMIT_CONFIG.billing.max} reqs/${RATE_LIMIT_CONFIG.billing.windowMs}ms`);
-    console.log(`  - Community: ${RATE_LIMIT_CONFIG.community.max} reqs/${RATE_LIMIT_CONFIG.community.windowMs}ms`);
+    console.log(
+      `  - Chat: ${RATE_LIMIT_CONFIG.chat.max} reqs/${RATE_LIMIT_CONFIG.chat.windowMs}ms`
+    );
+    console.log(
+      `  - Billing: ${RATE_LIMIT_CONFIG.billing.max} reqs/${RATE_LIMIT_CONFIG.billing.windowMs}ms`
+    );
+    console.log(
+      `  - Community: ${RATE_LIMIT_CONFIG.community.max} reqs/${RATE_LIMIT_CONFIG.community.windowMs}ms`
+    );
   } else {
     console.log("[BROCRAFT][RateLimit] Rate limiting DISABLED in development");
     console.log("  Set RATE_LIMIT_DEV=true to enable in dev");
   }
 }
-
-
-
-

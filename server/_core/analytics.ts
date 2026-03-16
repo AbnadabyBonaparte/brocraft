@@ -1,10 +1,10 @@
 /**
  * BROCRAFT Analytics Module
- * 
+ *
  * Módulo centralizado para tracking de eventos de produto.
  * Atualmente loga em console, preparado para integração futura
  * com serviços como PostHog, Amplitude, Mixpanel, etc.
- * 
+ *
  * Eventos rastreados:
  * - rank_up: Usuário subiu de rank
  * - recipe_completed: Usuário completou uma receita
@@ -76,7 +76,13 @@ export function trackRecipeCompleted(
   difficulty: string,
   xpAwarded: number
 ): void {
-  trackEvent("recipe_completed", { userId, recipeId, category, difficulty, xpAwarded });
+  trackEvent("recipe_completed", {
+    userId,
+    recipeId,
+    category,
+    difficulty,
+    xpAwarded,
+  });
 }
 
 export function trackPostCreated(
@@ -92,7 +98,11 @@ export function trackTierUpgrade(
   newTier: string,
   stripeSessionId?: string
 ): void {
-  trackEvent("tier_upgrade", { userId, newTier, stripeSessionId: stripeSessionId || "N/A" });
+  trackEvent("tier_upgrade", {
+    userId,
+    newTier,
+    stripeSessionId: stripeSessionId || "N/A",
+  });
 }
 
 export function trackLimitReached(
@@ -125,7 +135,11 @@ export function trackChatMessage(
   tier: string,
   messagesRemaining: number | null
 ): void {
-  trackEvent("chat_message", { userId, tier, messagesRemaining: messagesRemaining ?? "unlimited" });
+  trackEvent("chat_message", {
+    userId,
+    tier,
+    messagesRemaining: messagesRemaining ?? "unlimited",
+  });
 }
 
 /**
@@ -141,7 +155,3 @@ export function disableAnalytics(): void {
 export function enableAnalytics(): void {
   analyticsEnabled = true;
 }
-
-
-
-

@@ -30,7 +30,8 @@ check_pattern() {
 
 check_pattern "#[0-9a-fA-F]{6}" "hex code hardcoded em linhas adicionadas"
 check_pattern "gray-" "tons de cinza não padronizados em linhas adicionadas"
-check_pattern "mock|fake|placeholder" "referências de mock/fake/placeholder em linhas adicionadas"
+# placeholder= e placeholder: são UI legítimos; bloquear só mock/fake/dummy
+check_pattern "mock|Mock|fake|Fake|dummy|Dummy" "referências de mock/fake/dummy em linhas adicionadas"
 
 if [[ "$violations" -eq 1 ]]; then
   echo "⚠️  Remova hardcodes ou mocks antes de commitar."

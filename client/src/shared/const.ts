@@ -1,6 +1,17 @@
 import { ROUTES } from "./routes";
 
-export { AXIOS_TIMEOUT_MS, COMMUNITY_CATEGORIES, COMMUNITY_CATEGORY_VALUES, LEADERBOARD_TIMEFRAMES, NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG, VOTE_TYPES, type CommunityCategory, type LeaderboardTimeframe, type VoteType } from "@shared/const";
+export {
+  AXIOS_TIMEOUT_MS,
+  COMMUNITY_CATEGORIES,
+  COMMUNITY_CATEGORY_VALUES,
+  LEADERBOARD_TIMEFRAMES,
+  NOT_ADMIN_ERR_MSG,
+  UNAUTHED_ERR_MSG,
+  VOTE_TYPES,
+  type CommunityCategory,
+  type LeaderboardTimeframe,
+  type VoteType,
+} from "@shared/const";
 export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 
 export const APP_TITLE = import.meta.env.VITE_APP_TITLE || "App";

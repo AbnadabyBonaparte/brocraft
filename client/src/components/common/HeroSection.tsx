@@ -49,45 +49,57 @@ export function HeroSection() {
         </div>
 
         {/* Description */}
-          <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed px-4">
-            Aprenda com um irmão mais velho que sabe tudo sobre fermentação. Receba receitas personalizadas, dicas profissionais e ganhe XP enquanto domina a arte de fermentar como um pro.
-          </p>
+        <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed px-4">
+          Aprenda com um irmão mais velho que sabe tudo sobre fermentação.
+          Receba receitas personalizadas, dicas profissionais e ganhe XP
+          enquanto domina a arte de fermentar como um pro.
+        </p>
 
         {/* Features Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 py-4 md:py-8 px-4">
           {[
-            { icon: "🤖", label: "Chat com IA", desc: "Respostas em tempo real" },
+            {
+              icon: "🤖",
+              label: "Chat com IA",
+              desc: "Respostas em tempo real",
+            },
             { icon: "📚", label: "50+ Receitas", desc: "Conteúdo premium" },
-            { icon: "⚡", label: "Sistema de XP", desc: "Gamificação completa" },
+            {
+              icon: "⚡",
+              label: "Sistema de XP",
+              desc: "Gamificação completa",
+            },
           ].map((feature, idx) => (
-              <div
-                key={idx}
-                className="bg-card/60 border border-border/60 rounded-lg p-3 md:p-4 hover:border-primary/50 transition-all backdrop-blur-sm hover:bg-card"
-              >
-                <div className="text-2xl md:text-3xl mb-2">{feature.icon}</div>
-                <p className="font-bold text-foreground text-xs md:text-sm mb-1">{feature.label}</p>
-                <p className="text-xs text-muted-foreground">{feature.desc}</p>
-              </div>
+            <div
+              key={idx}
+              className="bg-card/60 border border-border/60 rounded-lg p-3 md:p-4 hover:border-primary/50 transition-all backdrop-blur-sm hover:bg-card"
+            >
+              <div className="text-2xl md:text-3xl mb-2">{feature.icon}</div>
+              <p className="font-bold text-foreground text-xs md:text-sm mb-1">
+                {feature.label}
+              </p>
+              <p className="text-xs text-muted-foreground">{feature.desc}</p>
+            </div>
           ))}
         </div>
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center pt-4 md:pt-8 px-4">
-            <a href={getLoginUrl()} className="flex-1 sm:flex-none">
-              <Button className="w-full sm:w-auto bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-700 text-primary-foreground py-4 md:py-7 text-base md:text-lg font-bold rounded-lg shadow-2xl hover:shadow-primary/50 transition-all group px-6 md:px-8">
-                <Flame className="h-4 md:h-5 w-4 md:w-5 mr-2 group-hover:animate-pulse" />
-                Começar Agora
-                <ArrowRight className="h-4 md:h-5 w-4 md:w-5 ml-2 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </a>
-            <Button
-              variant="outline"
-              className="flex-1 sm:flex-none border-border text-muted-foreground hover:bg-muted/50 py-4 md:py-7 text-base md:text-lg font-bold rounded-lg px-6 md:px-8"
-            >
-              <Zap className="h-4 md:h-5 w-4 md:w-5 mr-2" />
-              Explorar Receitas
+          <a href={getLoginUrl()} className="flex-1 sm:flex-none">
+            <Button className="w-full sm:w-auto bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-700 text-primary-foreground py-4 md:py-7 text-base md:text-lg font-bold rounded-lg shadow-2xl hover:shadow-primary/50 transition-all group px-6 md:px-8">
+              <Flame className="h-4 md:h-5 w-4 md:w-5 mr-2 group-hover:animate-pulse" />
+              Começar Agora
+              <ArrowRight className="h-4 md:h-5 w-4 md:w-5 ml-2 group-hover:translate-x-1 transition-transform" />
             </Button>
-          </div>
+          </a>
+          <Button
+            variant="outline"
+            className="flex-1 sm:flex-none border-border text-muted-foreground hover:bg-muted/50 py-4 md:py-7 text-base md:text-lg font-bold rounded-lg px-6 md:px-8"
+          >
+            <Zap className="h-4 md:h-5 w-4 md:w-5 mr-2" />
+            Explorar Receitas
+          </Button>
+        </div>
 
         {/* Trust Badges */}
         <div className="flex flex-wrap justify-center gap-4 md:gap-6 pt-4 md:pt-8 text-xs md:text-sm text-muted-foreground px-4">
@@ -110,7 +122,10 @@ export function HeroSection() {
       <div className="hidden md:block absolute top-20 left-10 text-6xl opacity-20 animate-bounce">
         🍺
       </div>
-      <div className="hidden md:block absolute bottom-20 right-10 text-6xl opacity-20 animate-bounce" style={{ animationDelay: "0.5s" }}>
+      <div
+        className="hidden md:block absolute bottom-20 right-10 text-6xl opacity-20 animate-bounce"
+        style={{ animationDelay: "0.5s" }}
+      >
         🥒
       </div>
       <div className="hidden md:block absolute top-1/3 right-20 text-5xl opacity-15 animate-pulse">

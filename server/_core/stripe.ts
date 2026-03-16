@@ -1,6 +1,6 @@
 /**
  * Stripe Integration for BROCRAFT
- * 
+ *
  * Handles checkout sessions for tier upgrades (MESTRE, CLUBE_BRO)
  * and webhook verification.
  */
@@ -11,7 +11,10 @@ import Stripe from "stripe";
 export type TierType = "MESTRE" | "CLUBE_BRO";
 
 // Configuração dos planos
-export const STRIPE_PLANS: Record<TierType, { priceId: string; name: string; price: number }> = {
+export const STRIPE_PLANS: Record<
+  TierType,
+  { priceId: string; name: string; price: number }
+> = {
   MESTRE: {
     priceId: process.env.STRIPE_PRICE_MESTRE || "",
     name: "Plano MESTRE",
@@ -46,8 +49,8 @@ function getStripe(): Stripe {
 export function isStripeConfigured(): boolean {
   return Boolean(
     process.env.STRIPE_SECRET_KEY &&
-    process.env.STRIPE_PRICE_MESTRE &&
-    process.env.STRIPE_PRICE_CLUBE_BRO
+      process.env.STRIPE_PRICE_MESTRE &&
+      process.env.STRIPE_PRICE_CLUBE_BRO
   );
 }
 
@@ -66,7 +69,8 @@ export async function createCheckoutSessionForTier(
     throw new Error(`Price ID não configurado para tier ${tier}`);
   }
 
-  const frontendBaseUrl = process.env.FRONTEND_BASE_URL || "http://localhost:5173";
+  const frontendBaseUrl =
+    process.env.FRONTEND_BASE_URL || "http://localhost:5173";
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
@@ -97,7 +101,9 @@ export async function createCheckoutSessionForTier(
     throw new Error("Stripe não retornou URL de checkout");
   }
 
-  console.log(`[BROCRAFT][Stripe] ✅ Checkout session criada para user ${userId}, tier ${tier}`);
+  console.log(
+    `[BROCRAFT][Stripe] ✅ Checkout session criada para user ${userId}, tier ${tier}`
+  );
 
   return {
     url: session.url,
@@ -125,7 +131,9 @@ export function constructWebhookEvent(
 /**
  * Recupera detalhes de uma sessão de checkout
  */
-export async function getCheckoutSession(sessionId: string): Promise<Stripe.Checkout.Session> {
+export async function getCheckoutSession(
+  sessionId: string
+): Promise<Stripe.Checkout.Session> {
   const stripe = getStripe();
   return stripe.checkout.sessions.retrieve(sessionId);
 }
@@ -133,9 +141,10 @@ export async function getCheckoutSession(sessionId: string): Promise<Stripe.Chec
 /**
  * Cancela uma subscription do Stripe
  */
-export async function cancelSubscription(subscriptionId: string): Promise<void> {
+export async function cancelSubscription(
+  subscriptionId: string
+): Promise<void> {
   const stripe = getStripe();
   await stripe.subscriptions.cancel(subscriptionId);
   console.log(`[BROCRAFT][Stripe] ⚠️ Subscription ${subscriptionId} cancelada`);
 }
-
