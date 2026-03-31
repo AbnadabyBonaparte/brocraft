@@ -78,6 +78,33 @@
 
   --color-green-400: var(--theme-success-400);
   --color-green-500: var(--theme-success-500);
+
+  /* Yellow → mapped to theme amber (gold tones) */
+  --color-yellow-400: var(--theme-amber-300);
+  --color-yellow-500: var(--theme-amber-400);
+  --color-yellow-600: var(--theme-amber-500);
+
+  /* Amber (TW native) → mapped to theme amber */
+  --color-amber-50: var(--theme-surface-muted);
+  --color-amber-200: var(--theme-border);
+  --color-amber-400: var(--theme-amber-400);
+  --color-amber-500: var(--theme-amber-500);
+  --color-amber-600: var(--theme-amber-600);
+  --color-amber-700: var(--theme-amber-700);
+  --color-amber-800: var(--theme-amber-700);
+
+  /* Orange-50 (missing shade) */
+  --color-orange-50: var(--theme-surface-muted);
+
+  /* Emerald → mapped to theme success */
+  --color-emerald-500: var(--theme-success-400);
+  --color-emerald-700: var(--theme-success-500);
+
+  /* Cyan → mapped to theme ice */
+  --color-cyan-500: var(--theme-ice-500);
+
+  /* Indigo → mapped to theme royal */
+  --color-indigo-500: var(--theme-royal-500);
 }
 
 :root {

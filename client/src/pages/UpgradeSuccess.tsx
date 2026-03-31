@@ -11,6 +11,8 @@ import {
   Sparkles,
   ArrowRight,
   PartyPopper,
+  AlertCircle,
+  RotateCcw,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 
@@ -131,6 +133,22 @@ export default function UpgradeSuccess() {
           <div className="flex items-center justify-center gap-2 text-muted-foreground mb-6">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span>Verificando status...</span>
+          </div>
+        ) : billingQuery.isError ? (
+          <div className="flex flex-col items-center gap-2 mb-6">
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              <span className="text-sm">Erro ao verificar status do plano.</span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-destructive/50 text-destructive hover:bg-destructive/10"
+              onClick={() => billingQuery.refetch()}
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Tentar novamente
+            </Button>
           </div>
         ) : billingQuery.data?.tier === tier ? (
           <div className="flex items-center justify-center gap-2 text-green-400 mb-6">
