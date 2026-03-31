@@ -17,6 +17,7 @@ import {
   Award,
   ArrowRight,
   RotateCcw,
+  AlertCircle,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -37,6 +38,33 @@ export default function Home() {
           </p>
         </div>
       </div>
+    );
+  }
+
+  if (profileQuery.isError) {
+    return (
+      <DashboardLayout onLogout={logout}>
+        <Card className="bg-destructive/10 border-destructive/30 p-6 flex items-start gap-4">
+          <AlertCircle className="h-6 w-6 text-destructive shrink-0 mt-0.5" />
+          <div className="space-y-2">
+            <p className="text-destructive font-semibold">
+              Erro ao carregar perfil.
+            </p>
+            <p className="text-foreground/80 text-sm">
+              Verifique sua conexão e tente novamente.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-destructive/50 text-destructive hover:bg-destructive/10"
+              onClick={() => profileQuery.refetch()}
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Tentar novamente
+            </Button>
+          </div>
+        </Card>
+      </DashboardLayout>
     );
   }
 
