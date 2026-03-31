@@ -24,7 +24,15 @@ fs.cpSync(distDir, staticDir, { recursive: true });
 const config = {
   version: 3,
   routes: [
+    // API rewrites (before filesystem, so they take priority)
+    { src: "/api/health", dest: "/api/index" },
+    { src: "/api/version", dest: "/api/index" },
+    { src: "/api/stripe/(.*)", dest: "/api/index" },
+    { src: "/api/oauth/(.*)", dest: "/api/index" },
+    { src: "/api/trpc/(.*)", dest: "/api/index" },
+    // Filesystem check (serves static files from .vercel/output/static/)
     { handle: "filesystem" },
+    // SPA fallback (all other routes go to index.html)
     { src: "/(.*)", dest: "/index.html" },
   ],
 };
