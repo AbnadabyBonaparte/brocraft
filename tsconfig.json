@@ -6,7 +6,14 @@
     "api/**/*",
     "types/**/*.d.ts"
   ],
-  "exclude": ["node_modules", "build", "dist", "**/*.test.ts", ".vercel", "client/dist"],
+  "exclude": [
+    "node_modules",
+    "build",
+    "dist",
+    "**/*.test.ts",
+    ".vercel",
+    "client/dist"
+  ],
   "compilerOptions": {
     "incremental": true,
     "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
