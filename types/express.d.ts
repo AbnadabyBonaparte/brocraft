@@ -1,16 +1,16 @@
-import 'express';
+/// <reference types="express" />
+
+import { Request as ExpressRequest, Response as ExpressResponse, NextFunction as ExpressNextFunction } from 'express';
 
 declare global {
   namespace Express {
-    interface Request {
-      // Adicione aqui qualquer extensão que você use (exemplo comum):
-      // user?: any;
-      // session?: any;
+    interface Request extends ExpressRequest {
+      // Adicione aqui suas propriedades customizadas se tiver (exemplo):
+      // user?: { id: string; email: string; role?: string };
     }
 
-    // Garante que Response e NextFunction também sejam reconhecidos
-    interface Response {}
-    interface NextFunction {}
+    interface Response extends ExpressResponse {}
+    interface NextFunction extends ExpressNextFunction {}
   }
 }
 
