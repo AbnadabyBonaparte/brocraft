@@ -5,8 +5,8 @@ import { Request as ExpressRequest, Response as ExpressResponse, NextFunction as
 declare global {
   namespace Express {
     interface Request extends ExpressRequest {
-      // Aqui você pode adicionar propriedades customizadas no futuro (ex: user)
-      // user?: { id: string; email: string };
+      // Adicione aqui propriedades customizadas no futuro, se precisar
+      // user?: any;
     }
 
     interface Response extends ExpressResponse {}
