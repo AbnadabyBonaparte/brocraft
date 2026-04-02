@@ -3,17 +3,8 @@
   "buildCommand": "pnpm build",
   "installCommand": "pnpm install",
   "framework": null,
-  "functions": {
-    "api/**/*.ts": {
-      "runtime": "@vercel/node@3.0.0"
-    }
-  },
   "rewrites": [
-    { "source": "/api/health", "destination": "/api/index" },
-    { "source": "/api/version", "destination": "/api/index" },
-    { "source": "/api/stripe/:path*", "destination": "/api/index" },
-    { "source": "/api/oauth/:path*", "destination": "/api/index" },
-    { "source": "/api/trpc/:path*", "destination": "/api/index" },
+    { "source": "/api/(.*)", "destination": "/api/index" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
