@@ -40,9 +40,9 @@ import type {
   LeaderboardTimeframe,
   CommunityCategory,
   VoteType,
-} from "@shared/const";
+} from "../shared/const";
 import type { TierType } from "./_core/stripe";
-import { ForbiddenError } from "@shared/_core/errors";
+import { ForbiddenError } from "../shared/_core/errors";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 

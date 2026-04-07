@@ -3,7 +3,7 @@ import {
   LEADERBOARD_TIMEFRAMES,
   COMMUNITY_CATEGORY_VALUES,
   VOTE_TYPES,
-} from "@shared/const";
+} from "../shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
