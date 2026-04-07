@@ -1,129 +1,242 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json } from "drizzle-orm/mysql-core";
+import { integer, pgEnum, pgTable, serial, text, timestamp, varchar, jsonb } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
-/**
- * Organizations table for multi-tenant isolation.
- * Each organization is completely isolated from others.
- */
-export const organizations = mysqlTable("organizations", {
-  id: varchar("id", { length: 36 }).primaryKey(), // UUID stored as varchar(36)
+// PostgreSQL Enums
+export const roleEnum = pgEnum("role_enum", ["user", "admin"]);
+export const rankEnum = pgEnum("rank_enum", ["NOVATO", "BRO_DA_PANELA", "MESTRE_DO_MALTE", "ALQUIMISTA", "LEGEND"]);
+export const tierEnum = pgEnum("tier_enum", ["FREE", "MESTRE", "CLUBE_BRO"]);
+export const recipeCategoryEnum = pgEnum("recipe_category_enum", ["CERVEJA", "FERMENTADOS", "LATICINIOS", "CHARCUTARIA", "DESTILADOS"]);
+export const difficultyEnum = pgEnum("difficulty_enum", ["RAJADO", "CLASSICO", "MESTRE"]);
+export const recipeStatusEnum = pgEnum("recipe_status_enum", ["STARTED", "IN_PROGRESS", "COMPLETED", "FAILED"]);
+export const communityCategoryEnum = pgEnum("community_category_enum", ["CERVEJA", "FERMENTADOS", "LATICINIOS", "CHARCUTARIA", "DICA", "OUTRO"]);
+export const voteTypeEnum = pgEnum("vote_type_enum", ["LIKE", "FIRE", "STAR"]);
+export const productCategoryEnum = pgEnum("product_category_enum", ["FERMENTO", "COALHO", "LUPULO", "MALTE", "EQUIPAMENTO", "KIT"]);
+export const orderStatusEnum = pgEnum("order_status_enum", ["PENDING", "PAID", "SHIPPED", "DELIVERED", "CANCELLED"]);
+export const purchaseTierEnum = pgEnum("purchase_tier_enum", ["MESTRE", "CLUBE_BRO"]);
+export const purchaseStatusEnum = pgEnum("purchase_status_enum", ["PENDING", "COMPLETED", "CANCELLED", "REFUNDED"]);
+
+// Organizations
+export const organizations = pgTable("organizations", {
+  id: varchar("id", { length: 36 }).primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   slug: varchar("slug", { length: 100 }).notNull().unique(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type Organization = typeof organizations.$inferSelect;
 export type InsertOrganization = typeof organizations.$inferInsert;
 
-/**
- * Core user table backing auth flow.
- * Extended with gamification fields for BROCRAFT.
- * Multi-tenant: each user belongs to an organization.
- */
-export const users = mysqlTable("users", {
-  id: int("id").autoincrement().primaryKey(),
-  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
+// Users
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
-  
-  // Gamification fields
-  xp: int("xp").default(0).notNull(),
-  rank: mysqlEnum("rank", ["NOVATO", "BRO_DA_PANELA", "MESTRE_DO_MALTE", "ALQUIMISTA", "LEGEND"]).default("NOVATO").notNull(),
-  tier: mysqlEnum("tier", ["FREE", "MESTRE", "CLUBE_BRO"]).default("FREE").notNull(),
-  streak: int("streak").default(0).notNull(),
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+  role: roleEnum("role").default("user").notNull(),
+  xp: integer("xp").default(0).notNull(),
+  rank: rankEnum("rank").default("NOVATO").notNull(),
+  tier: tierEnum("tier").default("FREE").notNull(),
+  streak: integer("streak").default(0).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  lastSignedIn: timestamp("lastSignedIn", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// Messages table for chat history
-export const messages = mysqlTable("messages", {
-  id: int("id").autoincrement().primaryKey(),
-  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
-  userId: int("userId").notNull(),
-  role: varchar("role", { length: 20 }).notNull(), // 'user' | 'assistant'
+// Messages
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull(),
+  role: varchar("role", { length: 20 }).notNull(),
   content: text("content").notNull(),
-  xpGained: int("xpGained").default(0).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  xpGained: integer("xpGained").default(0).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = typeof messages.$inferInsert;
 
-// Recipes table
-export const recipes = mysqlTable("recipes", {
-  id: int("id").autoincrement().primaryKey(),
-  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
+// Recipes
+export const recipes = pgTable("recipes", {
+  id: serial("id").primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
-  slug: varchar("slug", { length: 255 }).notNull(), // Unique per org (enforced at application level)
-  category: mysqlEnum("category", ["CERVEJA", "FERMENTADOS", "LATICINIOS", "CHARCUTARIA", "DESTILADOS"]).notNull(),
-  difficulty: mysqlEnum("difficulty", ["RAJADO", "CLASSICO", "MESTRE"]).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull(),
+  category: recipeCategoryEnum("category").notNull(),
+  difficulty: difficultyEnum("difficulty").notNull(),
   description: text("description").notNull(),
-  
-  // Structured recipe content (JSON)
-  rajado: json("rajado"),
-  classico: json("classico"),
-  mestre: json("mestre"),
+  rajado: jsonb("rajado"),
+  classico: jsonb("classico"),
+  mestre: jsonb("mestre"),
   macete: text("macete"),
-  
-  xp: int("xp").default(50).notNull(),
-  views: int("views").default(0).notNull(),
-  likes: int("likes").default(0).notNull(),
-  
-  // Warnings (stored as JSON array)
-  warnings: json("warnings"),
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  xp: integer("xp").default(50).notNull(),
+  views: integer("views").default(0).notNull(),
+  likes: integer("likes").default(0).notNull(),
+  warnings: jsonb("warnings"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type Recipe = typeof recipes.$inferSelect;
 export type InsertRecipe = typeof recipes.$inferInsert;
 
-// User recipes (tracking user progress)
-export const userRecipes = mysqlTable("userRecipes", {
-  id: int("id").autoincrement().primaryKey(),
-  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
-  userId: int("userId").notNull(),
-  recipeId: int("recipeId").notNull(),
-  
-  status: mysqlEnum("status", ["STARTED", "IN_PROGRESS", "COMPLETED", "FAILED"]).default("STARTED").notNull(),
+// User Recipes
+export const userRecipes = pgTable("userRecipes", {
+  id: serial("id").primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull(),
+  recipeId: integer("recipeId").notNull(),
+  status: recipeStatusEnum("status").default("STARTED").notNull(),
   photo: varchar("photo", { length: 512 }),
   notes: text("notes"),
-  rating: int("rating"),
-  
-  startedAt: timestamp("startedAt").defaultNow().notNull(),
-  completedAt: timestamp("completedAt"),
+  rating: integer("rating"),
+  startedAt: timestamp("startedAt", { withTimezone: true }).defaultNow().notNull(),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
 });
 
 export type UserRecipe = typeof userRecipes.$inferSelect;
 export type InsertUserRecipe = typeof userRecipes.$inferInsert;
 
-// Badges table
-export const badges = mysqlTable("badges", {
-  id: int("id").autoincrement().primaryKey(),
-  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
-  userId: int("userId").notNull(),
-  
+// Badges
+export const badges = pgTable("badges", {
+  id: serial("id").primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull(),
   type: varchar("type", { length: 100 }).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   icon: varchar("icon", { length: 50 }),
   color: varchar("color", { length: 7 }),
-  
-  earnedAt: timestamp("earnedAt").defaultNow().notNull(),
+  earnedAt: timestamp("earnedAt", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type Badge = typeof badges.$inferSelect;
 export type InsertBadge = typeof badges.$inferInsert;
 
-// Relations
+// Community Posts
+export const communityPosts = pgTable("communityPosts", {
+  id: serial("id").primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull(),
+  recipeId: integer("recipeId"),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  imageUrl: varchar("imageUrl", { length: 512 }),
+  videoUrl: varchar("videoUrl", { length: 512 }),
+  category: communityCategoryEnum("category").notNull(),
+  votes: integer("votes").default(0).notNull(),
+  comments: integer("comments").default(0).notNull(),
+  shares: integer("shares").default(0).notNull(),
+  instagramUrl: varchar("instagramUrl", { length: 512 }),
+  tiktokUrl: varchar("tiktokUrl", { length: 512 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type CommunityPost = typeof communityPosts.$inferSelect;
+export type InsertCommunityPost = typeof communityPosts.$inferInsert;
+
+// Votes
+export const votes = pgTable("votes", {
+  id: serial("id").primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull(),
+  postId: integer("postId").notNull(),
+  voteType: voteTypeEnum("voteType").notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type Vote = typeof votes.$inferSelect;
+export type InsertVote = typeof votes.$inferInsert;
+
+// Products
+export const products = pgTable("products", {
+  id: serial("id").primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  imageUrl: varchar("imageUrl", { length: 512 }),
+  category: productCategoryEnum("category").notNull(),
+  price: integer("price").notNull(),
+  stock: integer("stock").default(0).notNull(),
+  rating: integer("rating").default(0).notNull(),
+  reviews: integer("reviews").default(0).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type Product = typeof products.$inferSelect;
+export type InsertProduct = typeof products.$inferInsert;
+
+// Cart Items
+export const cartItems = pgTable("cartItems", {
+  id: serial("id").primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull(),
+  productId: integer("productId").notNull(),
+  quantity: integer("quantity").default(1).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type CartItem = typeof cartItems.$inferSelect;
+export type InsertCartItem = typeof cartItems.$inferInsert;
+
+// Orders
+export const orders = pgTable("orders", {
+  id: serial("id").primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull(),
+  total: integer("total").notNull(),
+  status: orderStatusEnum("status").default("PENDING").notNull(),
+  stripePaymentId: varchar("stripePaymentId", { length: 255 }),
+  items: jsonb("items"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type Order = typeof orders.$inferSelect;
+export type InsertOrder = typeof orders.$inferInsert;
+
+// Conversation History
+export const conversationHistory = pgTable("conversationHistory", {
+  id: serial("id").primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  messages: jsonb("messages").notNull(),
+  messageCount: integer("messageCount").default(0).notNull(),
+  xpGained: integer("xpGained").default(0).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type ConversationHistory = typeof conversationHistory.$inferSelect;
+export type InsertConversationHistory = typeof conversationHistory.$inferInsert;
+
+// Purchases
+export const purchases = pgTable("purchases", {
+  id: serial("id").primaryKey(),
+  orgId: varchar("orgId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull(),
+  tier: purchaseTierEnum("tier").notNull(),
+  stripeSessionId: varchar("stripeSessionId", { length: 255 }),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
+  amount: integer("amount").notNull(),
+  currency: varchar("currency", { length: 3 }).default("BRL").notNull(),
+  status: purchaseStatusEnum("status").default("PENDING").notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type Purchase = typeof purchases.$inferSelect;
+export type InsertPurchase = typeof purchases.$inferInsert;
+
+// ============ RELATIONS ============
+
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   users: many(users),
   messages: many(messages),
@@ -200,150 +313,6 @@ export const recipesRelations = relations(recipes, ({ one, many }) => ({
   userRecipes: many(userRecipes),
 }));
 
-// Community posts table
-export const communityPosts = mysqlTable("communityPosts", {
-  id: int("id").autoincrement().primaryKey(),
-  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
-  userId: int("userId").notNull(),
-  recipeId: int("recipeId"),
-  
-  title: varchar("title", { length: 255 }).notNull(),
-  description: text("description"),
-  imageUrl: varchar("imageUrl", { length: 512 }),
-  videoUrl: varchar("videoUrl", { length: 512 }),
-  
-  category: mysqlEnum("category", ["CERVEJA", "FERMENTADOS", "LATICINIOS", "CHARCUTARIA", "DICA", "OUTRO"]).notNull(),
-  
-  votes: int("votes").default(0).notNull(),
-  comments: int("comments").default(0).notNull(),
-  shares: int("shares").default(0).notNull(),
-  
-  instagramUrl: varchar("instagramUrl", { length: 512 }),
-  tiktokUrl: varchar("tiktokUrl", { length: 512 }),
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type CommunityPost = typeof communityPosts.$inferSelect;
-export type InsertCommunityPost = typeof communityPosts.$inferInsert;
-
-// Votes table for ranking
-export const votes = mysqlTable("votes", {
-  id: int("id").autoincrement().primaryKey(),
-  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
-  userId: int("userId").notNull(),
-  postId: int("postId").notNull(),
-  
-  voteType: mysqlEnum("voteType", ["LIKE", "FIRE", "STAR"]).notNull(),
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type Vote = typeof votes.$inferSelect;
-export type InsertVote = typeof votes.$inferInsert;
-
-// Marketplace products table
-export const products = mysqlTable("products", {
-  id: int("id").autoincrement().primaryKey(),
-  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
-  
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  imageUrl: varchar("imageUrl", { length: 512 }),
-  
-  category: mysqlEnum("category", ["FERMENTO", "COALHO", "LUPULO", "MALTE", "EQUIPAMENTO", "KIT"]).notNull(),
-  
-  price: int("price").notNull(), // em centavos (R$ 9.90 = 990)
-  stock: int("stock").default(0).notNull(),
-  
-  rating: int("rating").default(0).notNull(),
-  reviews: int("reviews").default(0).notNull(),
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type Product = typeof products.$inferSelect;
-export type InsertProduct = typeof products.$inferInsert;
-
-// Cart items
-export const cartItems = mysqlTable("cartItems", {
-  id: int("id").autoincrement().primaryKey(),
-  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
-  userId: int("userId").notNull(),
-  productId: int("productId").notNull(),
-  
-  quantity: int("quantity").default(1).notNull(),
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type CartItem = typeof cartItems.$inferSelect;
-export type InsertCartItem = typeof cartItems.$inferInsert;
-
-// Orders
-export const orders = mysqlTable("orders", {
-  id: int("id").autoincrement().primaryKey(),
-  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
-  userId: int("userId").notNull(),
-  
-  total: int("total").notNull(), // em centavos
-  status: mysqlEnum("status", ["PENDING", "PAID", "SHIPPED", "DELIVERED", "CANCELLED"]).default("PENDING").notNull(),
-  
-  stripePaymentId: varchar("stripePaymentId", { length: 255 }),
-  items: json("items"), // array of {productId, quantity, price}
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Order = typeof orders.$inferSelect;
-export type InsertOrder = typeof orders.$inferInsert;
-
-// Conversation history table
-export const conversationHistory = mysqlTable("conversationHistory", {
-  id: int("id").autoincrement().primaryKey(),
-  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
-  userId: int("userId").notNull(),
-  
-  title: varchar("title", { length: 255 }).notNull(),
-  messages: json("messages").notNull(),
-  
-  messageCount: int("messageCount").default(0).notNull(),
-  xpGained: int("xpGained").default(0).notNull(),
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type ConversationHistory = typeof conversationHistory.$inferSelect;
-export type InsertConversationHistory = typeof conversationHistory.$inferInsert;
-
-// Purchases table (tier upgrades via Stripe)
-export const purchases = mysqlTable("purchases", {
-  id: int("id").autoincrement().primaryKey(),
-  orgId: varchar("orgId", { length: 36 }).notNull(), // FK to organizations.id
-  userId: int("userId").notNull(),
-  
-  tier: mysqlEnum("tier", ["MESTRE", "CLUBE_BRO"]).notNull(),
-  
-  stripeSessionId: varchar("stripeSessionId", { length: 255 }),
-  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
-  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
-  
-  amount: int("amount").notNull(), // em centavos
-  currency: varchar("currency", { length: 3 }).default("BRL").notNull(),
-  
-  status: mysqlEnum("status", ["PENDING", "COMPLETED", "CANCELLED", "REFUNDED"]).default("PENDING").notNull(),
-  
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Purchase = typeof purchases.$inferSelect;
-export type InsertPurchase = typeof purchases.$inferInsert;
-
-// Relations for community posts
 export const communityPostsRelations = relations(communityPosts, ({ one, many }) => ({
   organization: one(organizations, {
     fields: [communityPosts.orgId],
@@ -409,7 +378,6 @@ export const ordersRelations = relations(orders, ({ one }) => ({
   }),
 }));
 
-// Conversation history relations
 export const conversationHistoryRelations = relations(conversationHistory, ({ one }) => ({
   organization: one(organizations, {
     fields: [conversationHistory.orgId],
@@ -421,7 +389,6 @@ export const conversationHistoryRelations = relations(conversationHistory, ({ on
   }),
 }));
 
-// Purchases relations
 export const purchasesRelations = relations(purchases, ({ one }) => ({
   organization: one(organizations, {
     fields: [purchases.orgId],
